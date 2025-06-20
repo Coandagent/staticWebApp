@@ -1,33 +1,46 @@
 import React, { useState } from 'react';
 import './App.css';
+import * as XLSX from 'xlsx';
 
 function App() {
-  // Removed unused fileData
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const handleFileUpload = async event => {
+  const handleFileUpload = event => {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
+
     reader.onload = async e => {
       try {
-        const text = e.target.result.trim();
+        const result = e.target.result;
         let parsedData = [];
 
-        if (file.name.endsWith('.csv')) {
+        if (file.name.match(/\.(xlsx|xls)$/i)) {
+          //1️⃣ Excel: Read array buffer and parse first sheet
+          const data = new Uint8Array(result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          parsedData = XLSX.utils.sheet_to_json(sheet, {
+            header: ['from_location', 'to_location', 'mode', 'weight_kg'],
+            defval: ''
+          });
+        } else if (file.name.endsWith('.csv')) {
+          // 2️⃣ CSV: Convert rows
+          const text = result.trim();
           parsedData = text.split('\n').map(line => {
-            const [origin, destination, transport, weight] = line.split(',').map(x => x.trim());
+            const [o, d, m, w] = line.split(',').map(x => x.trim());
             return {
-              from_location: origin,
-              to_location: destination,
-              mode: transport,
-              weight_kg: Number(weight) || 0
+              from_location: o,
+              to_location: d,
+              mode: m,
+              weight_kg: Number(w) || 0
             };
           });
         } else {
-          parsedData = JSON.parse(text).map(r => ({
+          // 3️⃣ JSON: Array of objects
+          const json = JSON.parse(result);
+          parsedData = json.map(r => ({
             from_location: r.origin,
             to_location: r.destination,
             mode: r.transport,
@@ -35,6 +48,7 @@ function App() {
           }));
         }
 
+        // 🔁 Send to backend
         setLoading(true);
         const res = await fetch('/api/calculate-co2', {
           method: 'POST',
@@ -43,7 +57,7 @@ function App() {
         });
         const data = await res.json();
 
-        // Convert kg to grams for display
+        // Convert to display format
         const converted = data.map(r => ({
           origin: r.from_location,
           destination: r.to_location,
@@ -51,7 +65,6 @@ function App() {
           distanceKm: r.distance_km,
           co2Grams: (parseFloat(r.co2_kg) * 1000).toFixed(0)
         }));
-
         setResults(converted);
       } catch (err) {
         console.error('Error:', err);
@@ -59,13 +72,23 @@ function App() {
         setLoading(false);
       }
     };
-    reader.readAsText(file);
+
+    // 🔄 Choose read method per type
+    if (file.name.match(/\.(xlsx|xls)$/i)) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
   };
 
   return (
     <div className="App">
       <h1>CO₂ Transport Calculator</h1>
-      <input type="file" accept=".csv,.json" onChange={handleFileUpload} />
+      <input
+        type="file"
+        accept=".csv,.json,.xlsx,.xls"
+        onChange={handleFileUpload}
+      />
       {loading && <p>Calculating…</p>}
       {results.length > 0 && (
         <div>
