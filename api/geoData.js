@@ -1,38 +1,27 @@
-const fs = require('fs'), path = require('path');
+const fs = require('fs');
+const path = require('path');
 const { parse } = require('csv-parse/sync');
-const cityIndex = new Map(), airportIndex = new Map(), portIndex = new Map();
+
+let locationMap = {};
 
 function loadData() {
-  // Load cities
-  const tsv = fs.readFileSync(path.join(__dirname,'data/cities1000.txt'),'utf8');
-  for(const line of tsv.split('\n')) {
-    const cols = line.split('\t');
-    if(cols.length<9) continue;
-    const [ , name, , , lat, lon, , , country ] = cols;
-    cityIndex.set(`${name.toLowerCase()},${country.toLowerCase()}`,{lat:+lat,lon:+lon});
-  }
-  // Load airports
-  const airCsv = fs.readFileSync(path.join(__dirname,'data/airports.csv'),'utf8');
-  parse(airCsv,{columns:true}).forEach(a=>{
-    airportIndex.set(a.iata_code.toLowerCase(),{lat:+a.latitude_deg,lon:+a.longitude_deg});
-    airportIndex.set(a.name.toLowerCase(),{lat:+a.latitude_deg,lon:+a.longitude_deg});
+  const text = fs.readFileSync(path.join(__dirname,'data','cities1000.txt'), 'utf8');
+  const recs = parse(text, {
+    delimiter: ';',
+    columns: true,
+    skip_empty_lines: true,
+    relax_column_count: true
   });
-  // Load ports
-  const portCsv = fs.readFileSync(path.join(__dirname,'data/seaports.csv'),'utf8');
-  parse(portCsv,{columns:true}).forEach(p=>{
-    portIndex.set(p.UNLOCODE.toLowerCase(),{lat:+p.Latitude,lon:+p.Longitude});
-    portIndex.set(p.Name.toLowerCase(),{lat:+p.Latitude,lon:+p.Longitude});
+  recs.forEach(r => {
+    locationMap[r.name] = { lat: parseFloat(r.latitude), lon: parseFloat(r.longitude) };
   });
+  console.log('Loaded', Object.keys(locationMap).length, 'locations');
 }
 
-function lookupLocation(input) {
-  const key = input.trim().toLowerCase();
-  if(airportIndex.has(key)) return airportIndex.get(key);
-  if(portIndex.has(key)) return portIndex.get(key);
-  if(cityIndex.has(key)) return cityIndex.get(key);
-  const cityKey = Array.from(cityIndex.keys()).find(k=>k.startsWith(key+','));
-  if(cityKey) return cityIndex.get(cityKey);
-  throw new Error(`Unknown location: ${input}`);
+function lookupLocation(name) {
+  const loc = locationMap[name];
+  if (!loc) throw new Error(`Unknown location: ${name}`);
+  return loc;
 }
 
-module.exports = {loadData, lookupLocation};
+module.exports = { loadData, lookupLocation };
