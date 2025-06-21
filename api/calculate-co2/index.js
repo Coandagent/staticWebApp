@@ -1,26 +1,18 @@
-const { loadData, lookupLocation } = require('../geoData');
+// api/calculate-co2/index.js
+
+const { loadData, lookupLocation, haversine } = require('../geoData');
 
 // grams CO₂ per tonne-km
 const CO2_FACTORS = { road: 120, air: 255, sea: 25 };
 
-// Haversine great-circle formula :contentReference[oaicite:6]{index=6}
-function haversine(a, b) {
-  const toRad = v => (v * Math.PI) / 180;
-  const R = 6371; // km
-  const dLat = toRad(b.lat - a.lat);
-  const dLon = toRad(b.lon - a.lon);
-  const x = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat))
-    * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-}
-
 let inited = false;
+
 module.exports = async function (context, req) {
   if (!inited) {
     loadData();
     inited = true;
   }
+
   const routes = req.body;
   if (!Array.isArray(routes)) {
     context.res = { status: 400, body: 'Must POST an array of routes.' };
@@ -29,10 +21,13 @@ module.exports = async function (context, req) {
 
   const results = routes.map(r => {
     try {
-      const fromInfo = lookupLocation(r.from_location, r.mode);
-      const toInfo   = lookupLocation(r.to_location,   r.mode);
+      // Pass through mandatory `eu` boolean and optional `state`
+      const opts     = { eu: r.eu, state: r.state };
+      const fromInfo = lookupLocation(r.from_location, r.mode, opts);
+      const toInfo   = lookupLocation(r.to_location,   r.mode, opts);
       const distKm   = haversine(fromInfo, toInfo);
-      const co2Kg    = distKm * (parseFloat(r.weight_kg)/1000) * (CO2_FACTORS[r.mode]||0);
+      const co2Kg    = distKm * (parseFloat(r.weight_kg) / 1000) * (CO2_FACTORS[r.mode] || 0);
+
       return {
         from_input:   r.from_location,
         from_used:    fromInfo.usedName,
