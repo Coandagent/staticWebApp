@@ -1,10 +1,11 @@
+// api/calculate-co2/index.js
 const { loadData, lookupLocation, haversine } = require('../geoData');
 let initialized = false;
 
 // grams CO₂ per tonne-km
 const CO2_FACTORS = { road: 120, air: 255, sea: 25 };
 
-module.exports = async function (context, req) {
+module.exports = async function(context, req) {
   if (!initialized) {
     loadData();
     initialized = true;
@@ -20,19 +21,17 @@ module.exports = async function (context, req) {
     try {
       const fromInfo = lookupLocation(r.from_location, r.mode);
       const toInfo   = lookupLocation(r.to_location,   r.mode);
-      // for road, add 15% to straight-line
-      const distKm = haversine(fromInfo, toInfo) * (r.mode === 'road' ? 1.15 : 1);
-      const factor = CO2_FACTORS[r.mode] || 0;
-      const co2kg  = distKm * (parseFloat(r.weight_kg) / 1000) * factor;
+      const distKm   = haversine(fromInfo, toInfo);  // pure great-circle
+      const co2kg    = distKm * (parseFloat(r.weight_kg)/1000) * (CO2_FACTORS[r.mode]||0);
       return {
-        from_input:   r.from_location,
-        from_used:    fromInfo.usedName,
-        to_input:     r.to_location,
-        to_used:      toInfo.usedName,
-        mode:         r.mode,
-        weight_kg:    r.weight_kg,
-        distance_km:  distKm.toFixed(2),
-        co2_kg:       co2kg.toFixed(3)
+        from_input:  r.from_location,
+        from_used:   fromInfo.usedName,
+        to_input:    r.to_location,
+        to_used:     toInfo.usedName,
+        mode:        r.mode,
+        weight_kg:   r.weight_kg,
+        distance_km: distKm.toFixed(2),
+        co2_kg:      co2kg.toFixed(3)
       };
     } catch (e) {
       return {
