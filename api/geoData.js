@@ -11,7 +11,7 @@ function loadData() {
   if (initialized) return;
   initialized = true;
 
-  // 1️⃣ Cities ≥1000 pop (semicolon-delimited CSV)
+  // Cities ≥1000 pop
   const cityCsv = fs.readFileSync(
     path.join(__dirname, 'data', 'geonames-all-cities-with-a-population-1000.csv'),
     'utf8'
@@ -31,7 +31,7 @@ function loadData() {
     });
   });
 
-  // 2️⃣ Airports (comma CSV)
+  // Airports
   const airportCsv = fs.readFileSync(path.join(__dirname, 'data', 'airports.csv'), 'utf8');
   airportList = parse(airportCsv, {
     delimiter: ',',
@@ -43,9 +43,9 @@ function loadData() {
     name: r.name,
     lat: parseFloat(r.latitude_deg),
     lon: parseFloat(r.longitude_deg)
-  })).filter(a => a.lat && a.lon);
+  })).filter(a => !isNaN(a.lat) && !isNaN(a.lon));
 
-  // 3️⃣ Seaports (semicolon CSV)
+  // Seaports
   const seaportCsv = fs.readFileSync(path.join(__dirname, 'data', 'seaports.csv'), 'utf8');
   seaportList = parse(seaportCsv, {
     delimiter: ';',
@@ -53,13 +53,14 @@ function loadData() {
     skip_empty_lines: true,
     relax_column_count: true
   }).map(r => ({
-    code: (r.UNLOCODE || r.port_name || '').toLowerCase(),
+    code: (r.UNLOCODE||r.port_name||'').toLowerCase(),
     name: r.port_name,
     lat: parseFloat(r.latitude),
     lon: parseFloat(r.longitude)
-  })).filter(p => p.lat && p.lon);
+  })).filter(p => !isNaN(p.lat) && !isNaN(p.lon));
 }
 
+// core haversine function
 function haversine(a, b) {
   const toRad = v => (v * Math.PI) / 180;
   const R = 6371;
@@ -73,13 +74,12 @@ function haversine(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
-// find nearest point in list to coords
 function nearest(list, coords) {
-  let best = null, bestDist = Infinity;
+  let best = null, dist = Infinity;
   list.forEach(p => {
-    const d = haversine(coords, { lat: p.lat, lon: p.lon });
-    if (d < bestDist) {
-      bestDist = d;
+    const d = haversine(coords, p);
+    if (d < dist) {
+      dist = d;
       best = p;
     }
   });
@@ -96,16 +96,14 @@ function lookupLocation(name, mode) {
     return c;
   }
   if (mode === 'air') {
-    // exact code or name
-    let a = airportList.find(a=>a.code===key||a.name.toLowerCase()===key);
-    if (a) return { ...a, usedName: a.name + ` (${a.code.toUpperCase()})` };
-    // fallback: find city coords then nearest airport
+    let a = airportList.find(a => a.code === key || a.name.toLowerCase() === key);
+    if (a) return { ...a, usedName: `${a.name} (${a.code.toUpperCase()})` };
     const city = cityMap[key];
     if (!city) throw new Error(`Unknown city for airport fallback: ${name}`);
     return nearest(airportList, city);
   }
   if (mode === 'sea') {
-    let p = seaportList.find(p=>p.code===key||p.name.toLowerCase()===key);
+    let p = seaportList.find(p => p.code === key || p.name.toLowerCase() === key);
     if (p) return { ...p, usedName: p.name };
     const city = cityMap[key];
     if (!city) throw new Error(`Unknown city for seaport fallback: ${name}`);
@@ -114,4 +112,4 @@ function lookupLocation(name, mode) {
   throw new Error(`Unsupported mode: ${mode}`);
 }
 
-module.exports = { loadData, lookupLocation };
+module.exports = { loadData, lookupLocation, haversine };
