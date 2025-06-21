@@ -1,4 +1,3 @@
-// api/geoData.js
 const fs   = require('fs');
 const path = require('path');
 const { parse } = require('csv-parse/sync');
@@ -8,7 +7,7 @@ let airportMap = {};
 let seaportMap = {};
 let initialized = false;
 
-// simple haversine for fallback distance
+// Haversine for nearest‐fallback lookup
 function haversine(a, b) {
   const toRad = v => (v * Math.PI) / 180;
   const R = 6371;
@@ -17,8 +16,8 @@ function haversine(a, b) {
   const x =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(a.lat)) *
-      Math.cos(toRad(b.lat)) *
-      Math.sin(dLon / 2) ** 2;
+    Math.cos(toRad(b.lat)) *
+    Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
@@ -26,135 +25,113 @@ function loadData() {
   if (initialized) return;
   initialized = true;
 
-  // 1️⃣ Cities ≥1k pop (semicolon CSV)
+  // 1️⃣ Cities ≥1 000 pop (semicolon-delimited)
   const cityCsv = fs.readFileSync(
     path.join(__dirname, 'data', 'geonames-all-cities-with-a-population-1000.csv'),
     'utf8'
   );
-  const cities = parse(cityCsv, {
+  parse(cityCsv, {
     delimiter: ';',
     columns: true,
     skip_empty_lines: true,
-    relax_column_count: true,
     relax_quotes: true
-  });
-  cities.forEach(r => {
+  }).forEach(r => {
     const pop = parseInt(r.Population, 10) || 0;
-    const [lat, lon] = r.Coordinates
-      .split(',')
-      .map(s => parseFloat(s.trim()));
-    const names = [
+    const [lat, lon] = r.Coordinates.split(',').map(s => parseFloat(s));
+    const variants = [
       r.Name,
       r['ASCII Name'],
-      ...r['Alternate Names'].split(',')
-    ].map(n => n.trim()).filter(Boolean);
-    names.forEach(raw => {
+      ...r['Alternate Names'].split(',').map(n => n.trim())
+    ].filter(Boolean);
+    variants.forEach(raw => {
       const key = raw.toLowerCase();
-      const existing = cityMap[key];
-      if (!existing || pop > existing.population) {
+      const prev = cityMap[key];
+      if (!prev || pop > prev.population) {
         cityMap[key] = { lat, lon, usedName: r.Name, population: pop };
       }
     });
   });
 
-  // 2️⃣ Airports (comma CSV) — only commercial airports
+  // 2️⃣ Airports (only scheduled_service=yes)
   const airportCsv = fs.readFileSync(
-    path.join(__dirname, 'data', 'airports.csv'),
-    'utf8'
+    path.join(__dirname, 'data', 'airports.csv'), 'utf8'
   );
-  const airports = parse(airportCsv, {
+  parse(airportCsv, {
     delimiter: ',',
     columns: true,
-    skip_empty_lines: true,
-    relax_column_count: true
-  });
-  airports.forEach(r => {
-    if (
-      !r.type?.toLowerCase().includes('airport') ||
-      r.scheduled_service?.toLowerCase() !== 'yes'
-    ) return;
-    // prefer IATA, then ICAO, then gps_code
-    const rawKey = (r.iata_code || r.icao_code || r.gps_code || '').trim();
-    if (!rawKey) return;
-    const key = rawKey.toLowerCase();
-    airportMap[key] = {
+    skip_empty_lines: true
+  }).forEach(r => {
+    if ((r.scheduled_service || '').toLowerCase() !== 'yes') return;
+    const code = (r.iata_code || r.icao_code || r.gps_code || '').trim().toLowerCase();
+    if (!code) return;
+    airportMap[code] = {
       lat: parseFloat(r.latitude_deg),
       lon: parseFloat(r.longitude_deg),
       usedName: r.name
     };
   });
 
-  // 3️⃣ Seaports (comma CSV)
+  // 3️⃣ Seaports (semicolon-delimited)
   const seaportCsv = fs.readFileSync(
-    path.join(__dirname, 'data', 'seaports.csv'),
-    'utf8'
+    path.join(__dirname, 'data', 'seaports.csv'), 'utf8'
   );
-  const seaports = parse(seaportCsv, {
-    delimiter: ';', // update as needed ',' or ';'
+  parse(seaportCsv, {
+    delimiter: ';',
     columns: true,
-    skip_empty_lines: true,
-    relax_column_count: true
-  });
-  seaports.forEach(r => {
-    const rawKey = (r.UNLOCODE || r.name).trim();
-    if (!rawKey) return;
-    const key = rawKey.toLowerCase();
-    seaportMap[key] = {
-      lat: parseFloat(r.latitude  ?? r.lat),
-      lon: parseFloat(r.longitude ?? r.lon),
+    skip_empty_lines: true
+  }).forEach(r => {
+    const code = (r.UNLOCODE || r.name || '').trim().toLowerCase();
+    if (!code) return;
+    seaportMap[code] = {
+      lat: parseFloat(r.latitude || r.lat),
+      lon: parseFloat(r.longitude || r.lon),
       usedName: r.name
     };
   });
 
   console.log(
-    'Loaded:',
-    Object.keys(cityMap).length,   'cities,',
-    Object.keys(airportMap).length,'airports,',
-    Object.keys(seaportMap).length,'seaports'
+    'Loaded',
+    Object.keys(cityMap).length, 'cities,',
+    Object.keys(airportMap).length, 'airports,',
+    Object.keys(seaportMap).length, 'seaports'
   );
 }
 
-// lookup + fallback
-function lookupLocation(rawName, mode) {
-  const name = rawName.trim().toLowerCase();
+function lookupLocation(raw, mode) {
   loadData();
+  const key = raw.trim().toLowerCase();
 
   if (mode === 'road') {
-    const c = cityMap[name];
-    if (!c) throw new Error(`Unknown city: ${rawName}`);
+    const c = cityMap[key];
+    if (!c) throw new Error(`Unknown city: ${raw}`);
     return c;
   }
-
   if (mode === 'air') {
-    if (airportMap[name]) return airportMap[name];
-
-    // fallback: nearest airport to city
-    const city = cityMap[name];
-    if (!city) throw new Error(`Unknown airport or city: ${rawName}`);
-    let best = null, dist = Infinity;
-    for (const a of Object.values(airportMap)) {
-      const d = haversine(city, a);
+    if (airportMap[key]) return airportMap[key];
+    // fallback: nearest airport to the city
+    const c = cityMap[key];
+    if (!c) throw new Error(`Unknown airport or city: ${raw}`);
+    let best, dist = Infinity;
+    Object.values(airportMap).forEach(a => {
+      const d = haversine(c, a);
       if (d < dist) { dist = d; best = a; }
-    }
-    if (!best) throw new Error(`No airports available`);
+    });
+    if (!best) throw new Error('No airports available');
     return best;
   }
-
   if (mode === 'sea') {
-    if (seaportMap[name]) return seaportMap[name];
-
-    // fallback: nearest seaport to city
-    const city = cityMap[name];
-    if (!city) throw new Error(`Unknown seaport or city: ${rawName}`);
-    let best = null, dist = Infinity;
-    for (const s of Object.values(seaportMap)) {
-      const d = haversine(city, s);
+    if (seaportMap[key]) return seaportMap[key];
+    // fallback: nearest seaport to the city
+    const c = cityMap[key];
+    if (!c) throw new Error(`Unknown seaport or city: ${raw}`);
+    let best, dist = Infinity;
+    Object.values(seaportMap).forEach(s => {
+      const d = haversine(c, s);
       if (d < dist) { dist = d; best = s; }
-    }
-    if (!best) throw new Error(`No seaports available`);
+    });
+    if (!best) throw new Error('No seaports available');
     return best;
   }
-
   throw new Error(`Unsupported mode: ${mode}`);
 }
 
