@@ -38,7 +38,7 @@ export default function App() {
   const removeRow = idx =>
     setRows(rows.filter((_, i) => i !== idx));
 
-  const calculate = async payload => {
+  const calculate = async (payload) => {
     setLoading(true);
     try {
       const res = await fetch('/api/calculate-co2', {
@@ -69,13 +69,13 @@ export default function App() {
     calculate(payload);
   };
 
-  const handleFileUpload = e => {
+  const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setFileLoading(true);
 
     const reader = new FileReader();
-    reader.onload = async evt => {
+    reader.onload = async (evt) => {
       let parsed = [];
       const text = evt.target.result;
 
@@ -112,7 +112,47 @@ export default function App() {
   };
 
   const downloadReport = () => {
-    alert(`Preparing your report as ${format.toUpperCase()}…`);
+    if (!results.length) {
+      alert('No results to download.');
+      return;
+    }
+
+    if (format === 'csv' || format === 'xlsx') {
+      const wsData = [
+        ['From','Used From','To','Used To','Mode','Distance_km','CO2_kg'],
+        ...results.map(r => [
+          r.from_input, r.from_used,
+          r.to_input,   r.to_used,
+          r.mode,       r.distance_km,
+          r.co2_kg
+        ])
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Results');
+      const wbout = XLSX.write(wb, { bookType: format==='xlsx'?'xlsx':'csv', type:'array' });
+      const blob  = new Blob([wbout], { type: 'application/octet-stream' });
+      const a     = document.createElement('a');
+      a.href      = URL.createObjectURL(blob);
+      a.download  = `co2-results.${format}`;
+      a.click();
+    } else if (format === 'pdf') {
+      const win = window.open('', '_blank');
+      win.document.write('<html><head><title>CO₂ Report</title></head><body>');
+      win.document.write('<h1>CO₂ Transport Report</h1>');
+      win.document.write('<table border="1" style="width:100%;border-collapse:collapse;">');
+      win.document.write('<tr><th>From</th><th>Used From</th><th>To</th><th>Used To</th><th>Mode</th><th>Distance</th><th>CO₂ (kg)</th></tr>');
+      results.forEach(r => {
+        win.document.write(`<tr>
+          <td>${r.from_input}</td><td>${r.from_used}</td>
+          <td>${r.to_input}</td><td>${r.to_used}</td>
+          <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
+        </tr>`);
+      });
+      win.document.write('</table></body></html>');
+      win.document.close();
+      win.print();
+    }
   };
 
   return (
@@ -129,13 +169,8 @@ export default function App() {
               id="file-upload"
               style={{ display: 'none' }}
             />
-            {/* Upload button as label */}
-            <Button
-              as="label"
-              htmlFor="file-upload"
-              variant="outline-primary"
-              className="me-3"
-            >
+            {/* Upload button */}
+            <Button as="label" htmlFor="file-upload" variant="outline-primary" className="me-3">
               {fileLoading
                 ? <Spinner animation="border" size="sm" />
                 : <FaUpload className="me-1" />
@@ -143,16 +178,14 @@ export default function App() {
               Upload File
             </Button>
 
-            {/* Report format selector */}
+            {/* Format selector */}
             <Dropdown onSelect={setFormat} className="me-3">
               <Dropdown.Toggle variant="outline-secondary">
                 Format: {format.toUpperCase()}
               </Dropdown.Toggle>
               <Dropdown.Menu>
                 {['pdf','xlsx','csv'].map(f => (
-                  <Dropdown.Item key={f} eventKey={f}>
-                    {f.toUpperCase()}
-                  </Dropdown.Item>
+                  <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
                 ))}
               </Dropdown.Menu>
             </Dropdown>
@@ -179,81 +212,28 @@ export default function App() {
               <tbody>
                 {rows.map((r,i) => (
                   <tr key={i}>
+                    <td><Form.Control placeholder="City" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)} /></td>
+                    <td><Form.Control placeholder="City" value={r.to} onChange={e=>handleChange(i,'to',e.target.value)} /></td>
                     <td>
-                      <Form.Control
-                        placeholder="City"
-                        value={r.from}
-                        onChange={e => handleChange(i,'from',e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <Form.Control
-                        placeholder="City"
-                        value={r.to}
-                        onChange={e => handleChange(i,'to',e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <Form.Select
-                        value={r.mode}
-                        onChange={e => handleChange(i,'mode',e.target.value)}
-                      >
+                      <Form.Select value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}>
                         <option value="road">Road</option>
                         <option value="air">Air</option>
                         <option value="sea">Sea</option>
                       </Form.Select>
                     </td>
-                    <td>
-                      <Form.Control
-                        type="number"
-                        placeholder="0"
-                        value={r.weight}
-                        onChange={e => handleChange(i,'weight',e.target.value)}
-                      />
-                    </td>
-                    <td className="text-center">
-                      <Form.Check
-                        type="checkbox"
-                        checked={r.eu}
-                        onChange={e => handleChange(i,'eu',e.target.checked)}
-                      />
-                    </td>
-                    <td>
-                      <Form.Control
-                        placeholder="State"
-                        value={r.state}
-                        onChange={e => handleChange(i,'state',e.target.value)}
-                      />
-                    </td>
-                    <td className="text-center">
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={() => removeRow(i)}
-                      >
-                        <FaTrash />
-                      </Button>
-                    </td>
+                    <td><Form.Control type="number" placeholder="0" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)} /></td>
+                    <td className="text-center"><Form.Check type="checkbox" checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)} /></td>
+                    <td><Form.Control placeholder="State" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)} /></td>
+                    <td className="text-center"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash /></Button></td>
                   </tr>
                 ))}
               </tbody>
             </Table>
             <Row className="mt-3">
-              <Col>
-                <Button variant="success" onClick={addRow}>
-                  <FaUpload className="me-1" /> Add Row
-                </Button>
-              </Col>
+              <Col><Button variant="success" onClick={addRow}><FaUpload className="me-1" /> Add Row</Button></Col>
               <Col className="text-end">
-                <Button
-                  variant="primary"
-                  onClick={handleManualCalculate}
-                  disabled={loading}
-                >
-                  {loading
-                    ? 'Calculating…'
-                    : (<><FaCalculator className="me-1" /> Calculate</>)
-                  }
+                <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
+                  {loading ? 'Calculating…' : <><FaCalculator className="me-1" /> Calculate</>}
                 </Button>
               </Col>
             </Row>
@@ -266,22 +246,13 @@ export default function App() {
               <Card.Title>Results</Card.Title>
               <Table striped bordered hover responsive className="mt-3">
                 <thead>
-                  <tr>
-                    <th>From (Used)</th><th>To (Used)</th>
-                    <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th>
-                  </tr>
+                  <tr><th>From (Used)</th><th>To (Used)</th><th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th></tr>
                 </thead>
                 <tbody>
                   {results.map((r,i) => (
                     <tr key={i}>
-                      <td>
-                        {r.from_input}{' '}
-                        <small className="text-muted">({r.from_used})</small>
-                      </td>
-                      <td>
-                        {r.to_input}{' '}
-                        <small className="text-muted">({r.to_used})</small>
-                      </td>
+                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
+                      <td>{r.to_input}   <small className="text-muted">({r.to_used})</small></td>
                       <td className="text-capitalize">{r.mode}</td>
                       <td>{r.distance_km}</td>
                       <td>{r.co2_kg}</td>
@@ -295,9 +266,7 @@ export default function App() {
       </Container>
 
       <footer className="bg-light py-3 text-center">
-        <small className="text-secondary">
-          © {new Date().getFullYear()} Coandagent
-        </small>
+        <small className="text-secondary">© {new Date().getFullYear()} Coandagent</small>
       </footer>
     </>
   );
