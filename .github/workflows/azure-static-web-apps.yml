@@ -1,0 +1,39 @@
+name: Azure Static Web Apps CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**    # include your feature branches if desired
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    name: Build and Deploy Job
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+
+      - name: npm install (frontend)
+        working-directory: frontend
+        run: npm ci
+
+      - name: npm run build (frontend)
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token:                           ${{ secrets.GITHUB_TOKEN }}
+          action:                               "upload"
+          #### Adjust these to match your paths ####
+          app_location:                        "/frontend"
+          api_location:                        "/api"
+          output_location:                     "/frontend/build"
