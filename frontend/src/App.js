@@ -102,12 +102,13 @@ export default function App() {
         eu:            String(r.eu).toLowerCase() === 'yes',
         state:         (r.state || '').toLowerCase(),
       }));
+
       calculate(payload);
       e.target.value = '';
     };
 
     if (/\.(xlsx|xls)$/i.test(file.name)) reader.readAsArrayBuffer(file);
-    else reader.readAsText(file);
+    else                                   reader.readAsText(file);
   };
 
   const downloadReport = () => {
@@ -121,22 +122,26 @@ export default function App() {
           <Navbar.Brand>Coandagent ESG CO₂ Dashboard</Navbar.Brand>
           <Nav className="ms-auto align-items-center">
             {/* Hidden file input */}
-            <input
+            <Form.Control
               type="file"
               accept=".csv,.json,.xlsx,.xls"
               onChange={handleFileUpload}
-              style={{ display: 'none' }}
               id="file-upload"
+              style={{ display: 'none' }}
             />
-            <label htmlFor="file-upload">
-              <Button variant="outline-primary" className="me-3">
-                {fileLoading
-                  ? <Spinner animation="border" size="sm" />
-                  : <FaUpload className="me-1" />
-                }
-                Upload File
-              </Button>
-            </label>
+            {/* Upload button as label */}
+            <Button
+              as="label"
+              htmlFor="file-upload"
+              variant="outline-primary"
+              className="me-3"
+            >
+              {fileLoading
+                ? <Spinner animation="border" size="sm" />
+                : <FaUpload className="me-1" />
+              }
+              Upload File
+            </Button>
 
             {/* Report format selector */}
             <Dropdown onSelect={setFormat} className="me-3">
@@ -167,7 +172,8 @@ export default function App() {
             <Table bordered responsive className="align-middle">
               <thead className="table-light">
                 <tr>
-                  <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
+                  <th>From</th><th>To</th><th>Mode</th>
+                  <th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -177,20 +183,20 @@ export default function App() {
                       <Form.Control
                         placeholder="City"
                         value={r.from}
-                        onChange={e=>handleChange(i,'from',e.target.value)}
+                        onChange={e => handleChange(i,'from',e.target.value)}
                       />
                     </td>
                     <td>
                       <Form.Control
                         placeholder="City"
                         value={r.to}
-                        onChange={e=>handleChange(i,'to',e.target.value)}
+                        onChange={e => handleChange(i,'to',e.target.value)}
                       />
                     </td>
                     <td>
                       <Form.Select
                         value={r.mode}
-                        onChange={e=>handleChange(i,'mode',e.target.value)}
+                        onChange={e => handleChange(i,'mode',e.target.value)}
                       >
                         <option value="road">Road</option>
                         <option value="air">Air</option>
@@ -202,25 +208,29 @@ export default function App() {
                         type="number"
                         placeholder="0"
                         value={r.weight}
-                        onChange={e=>handleChange(i,'weight',e.target.value)}
+                        onChange={e => handleChange(i,'weight',e.target.value)}
                       />
                     </td>
                     <td className="text-center">
                       <Form.Check
                         type="checkbox"
                         checked={r.eu}
-                        onChange={e=>handleChange(i,'eu',e.target.checked)}
+                        onChange={e => handleChange(i,'eu',e.target.checked)}
                       />
                     </td>
                     <td>
                       <Form.Control
                         placeholder="State"
                         value={r.state}
-                        onChange={e=>handleChange(i,'state',e.target.value)}
+                        onChange={e => handleChange(i,'state',e.target.value)}
                       />
                     </td>
                     <td className="text-center">
-                      <Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => removeRow(i)}
+                      >
                         <FaTrash />
                       </Button>
                     </td>
@@ -235,10 +245,14 @@ export default function App() {
                 </Button>
               </Col>
               <Col className="text-end">
-                <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
+                <Button
+                  variant="primary"
+                  onClick={handleManualCalculate}
+                  disabled={loading}
+                >
                   {loading
                     ? 'Calculating…'
-                    : <><FaCalculator className="me-1" /> Calculate</>
+                    : (<><FaCalculator className="me-1" /> Calculate</>)
                   }
                 </Button>
               </Col>
@@ -246,7 +260,7 @@ export default function App() {
           </Card.Body>
         </Card>
 
-        {results.length>0 && (
+        {results.length > 0 && (
           <Card className="shadow-sm">
             <Card.Body>
               <Card.Title>Results</Card.Title>
@@ -258,10 +272,16 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r,i)=>(
+                  {results.map((r,i) => (
                     <tr key={i}>
-                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
-                      <td>{r.to_input}   <small className="text-muted">({r.to_used})</small></td>
+                      <td>
+                        {r.from_input}{' '}
+                        <small className="text-muted">({r.from_used})</small>
+                      </td>
+                      <td>
+                        {r.to_input}{' '}
+                        <small className="text-muted">({r.to_used})</small>
+                      </td>
                       <td className="text-capitalize">{r.mode}</td>
                       <td>{r.distance_km}</td>
                       <td>{r.co2_kg}</td>
