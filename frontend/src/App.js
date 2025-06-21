@@ -49,15 +49,15 @@ export default function App() {
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setResults(data);
-    } catch (error) {
-      alert(error.message);
+    } catch (err) {
+      alert(err.message);
     } finally {
       setLoading(false);
       setFileLoading(false);
     }
   };
 
-  const handleCalculate = () => {
+  const handleManualCalculate = () => {
     const payload = rows.map(r => ({
       from_location: r.from,
       to_location:   r.to,
@@ -82,16 +82,13 @@ export default function App() {
       if (/\.(xlsx|xls)$/i.test(file.name)) {
         const data = new Uint8Array(evt.target.result);
         const wb   = XLSX.read(data, { type: 'array' });
-        parsed     = XLSX.utils.sheet_to_json(
-          wb.Sheets[wb.SheetNames[0]],
-          { defval: '' }
-        );
+        parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
       } else if (/\.csv$/i.test(file.name)) {
         const lines = text.trim().split('\n');
         const keys  = lines[0].split(',').map(h => h.trim());
         parsed = lines.slice(1).map(row => {
           const vals = row.split(',').map(v => v.trim());
-          return Object.fromEntries(keys.map((k, i) => [k, vals[i]]));
+          return Object.fromEntries(keys.map((k,i) => [k, vals[i]]));
         });
       } else {
         parsed = JSON.parse(text);
@@ -105,16 +102,12 @@ export default function App() {
         eu:            String(r.eu).toLowerCase() === 'yes',
         state:         (r.state || '').toLowerCase(),
       }));
-
       calculate(payload);
       e.target.value = '';
     };
 
-    if (/\.(xlsx|xls)$/i.test(file.name)) {
-      reader.readAsArrayBuffer(file);
-    } else {
-      reader.readAsText(file);
-    }
+    if (/\.(xlsx|xls)$/i.test(file.name)) reader.readAsArrayBuffer(file);
+    else reader.readAsText(file);
   };
 
   const downloadReport = () => {
@@ -137,11 +130,10 @@ export default function App() {
             />
             <label htmlFor="file-upload">
               <Button variant="outline-primary" className="me-3">
-                {fileLoading ? (
-                  <Spinner animation="border" size="sm" />
-                ) : (
-                  <FaUpload className="me-1" />
-                )}
+                {fileLoading
+                  ? <Spinner animation="border" size="sm" />
+                  : <FaUpload className="me-1" />
+                }
                 Upload File
               </Button>
             </label>
@@ -152,7 +144,7 @@ export default function App() {
                 Format: {format.toUpperCase()}
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                {['pdf', 'xlsx', 'csv'].map(f => (
+                {['pdf','xlsx','csv'].map(f => (
                   <Dropdown.Item key={f} eventKey={f}>
                     {f.toUpperCase()}
                   </Dropdown.Item>
@@ -161,7 +153,7 @@ export default function App() {
             </Dropdown>
 
             {/* Download report */}
-            <Button variant="primary" onClick={downloadReport} className="me-3">
+            <Button variant="primary" onClick={downloadReport}>
               <FaDownload /> Download Report
             </Button>
           </Nav>
@@ -175,36 +167,30 @@ export default function App() {
             <Table bordered responsive className="align-middle">
               <thead className="table-light">
                 <tr>
-                  <th>From</th>
-                  <th>To</th>
-                  <th>Mode</th>
-                  <th>Weight (kg)</th>
-                  <th>EU</th>
-                  <th>State</th>
-                  <th></th>
+                  <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, i) => (
+                {rows.map((r,i) => (
                   <tr key={i}>
                     <td>
                       <Form.Control
                         placeholder="City"
                         value={r.from}
-                        onChange={e => handleChange(i, 'from', e.target.value)}
+                        onChange={e=>handleChange(i,'from',e.target.value)}
                       />
                     </td>
                     <td>
                       <Form.Control
                         placeholder="City"
                         value={r.to}
-                        onChange={e => handleChange(i, 'to', e.target.value)}
+                        onChange={e=>handleChange(i,'to',e.target.value)}
                       />
                     </td>
                     <td>
                       <Form.Select
                         value={r.mode}
-                        onChange={e => handleChange(i, 'mode', e.target.value)}
+                        onChange={e=>handleChange(i,'mode',e.target.value)}
                       >
                         <option value="road">Road</option>
                         <option value="air">Air</option>
@@ -216,29 +202,25 @@ export default function App() {
                         type="number"
                         placeholder="0"
                         value={r.weight}
-                        onChange={e => handleChange(i, 'weight', e.target.value)}
+                        onChange={e=>handleChange(i,'weight',e.target.value)}
                       />
                     </td>
                     <td className="text-center">
                       <Form.Check
                         type="checkbox"
                         checked={r.eu}
-                        onChange={e => handleChange(i, 'eu', e.target.checked)}
+                        onChange={e=>handleChange(i,'eu',e.target.checked)}
                       />
                     </td>
                     <td>
                       <Form.Control
                         placeholder="State"
                         value={r.state}
-                        onChange={e => handleChange(i, 'state', e.target.value)}
+                        onChange={e=>handleChange(i,'state',e.target.value)}
                       />
                     </td>
                     <td className="text-center">
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={() => removeRow(i)}
-                      >
+                      <Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}>
                         <FaTrash />
                       </Button>
                     </td>
@@ -253,43 +235,33 @@ export default function App() {
                 </Button>
               </Col>
               <Col className="text-end">
-                <Button
-                  variant="primary"
-                  onClick={handleCalculate}
-                  disabled={loading}
-                >
-                  {loading ? 'Calculating…' : <><FaCalculator className="me-1" /> Calculate</>}
+                <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
+                  {loading
+                    ? 'Calculating…'
+                    : <><FaCalculator className="me-1" /> Calculate</>
+                  }
                 </Button>
               </Col>
             </Row>
           </Card.Body>
         </Card>
 
-        {results.length > 0 && (
+        {results.length>0 && (
           <Card className="shadow-sm">
             <Card.Body>
               <Card.Title>Results</Card.Title>
               <Table striped bordered hover responsive className="mt-3">
                 <thead>
                   <tr>
-                    <th>From (Used)</th>
-                    <th>To (Used)</th>
-                    <th>Mode</th>
-                    <th>Distance (km)</th>
-                    <th>CO₂ (kg)</th>
+                    <th>From (Used)</th><th>To (Used)</th>
+                    <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r, i) => (
+                  {results.map((r,i)=>(
                     <tr key={i}>
-                      <td>
-                        {r.from_input}{' '}
-                        <small className="text-muted">({r.from_used})</small>
-                      </td>
-                      <td>
-                        {r.to_input}{' '}
-                        <small className="text-muted">({r.to_used})</small>
-                      </td>
+                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
+                      <td>{r.to_input}   <small className="text-muted">({r.to_used})</small></td>
                       <td className="text-capitalize">{r.mode}</td>
                       <td>{r.distance_km}</td>
                       <td>{r.co2_kg}</td>
