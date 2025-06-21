@@ -1,12 +1,16 @@
-// api/calculate-co2/index.js
 const { loadData, lookupLocation } = require('../geoData');
 let initialized = false;
-const CO2_FACTORS = { road: 120, air: 255, sea: 25 };
 
-// ── Make sure haversine is defined *before* you call it ──
+// grams CO₂ per tonne-km: road=120, air=255, sea=25
+const CO2_FACTORS = {
+  road: 120,
+  air: 255,
+  sea: 25
+};
+
 function haversine(a, b) {
   const toRad = v => (v * Math.PI) / 180;
-  const R = 6371; // Earth’s radius in km
+  const R = 6371; // km
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
   const x =
@@ -25,36 +29,48 @@ module.exports = async function (context, req) {
 
   const routes = req.body;
   if (!Array.isArray(routes)) {
-    context.res = { status: 400, body: 'Must POST an array of routes.' };
+    context.res = {
+      status: 400,
+      body: 'Must POST an array of routes.'
+    };
     return;
   }
 
-  const results = [];
-  for (const r of routes) {
+  const results = routes.map(r => {
     try {
-      const from = lookupLocation(r.from_location);
-      const to = lookupLocation(r.to_location);
-      const distance_km = haversine(from, to);
-      const co2_kg =
-        distance_km *
-        (parseFloat(r.weight_kg) / 1000) *
-        (CO2_FACTORS[r.mode] || 0);
+      const fromInfo = lookupLocation(r.from_location, r.mode);
+      const toInfo = lookupLocation(r.to_location, r.mode);
 
-      results.push({
-        from_location: r.from_location,
-        to_location: r.to_location,
+      // distance in km
+      const distance_km = haversine(fromInfo, toInfo);
+      // CO₂ in kg: (distance_km × weight_tonnes × factor)
+      const weight_t = parseFloat(r.weight_kg) / 1000;
+      const factor = CO2_FACTORS[r.mode] || 0;
+      const co2_kg = distance_km * weight_t * factor;
+
+      return {
+        from_input: r.from_location,
+        from_used: fromInfo.usedName,
+        to_input: r.to_location,
+        to_used: toInfo.usedName,
         mode: r.mode,
         weight_kg: r.weight_kg,
         distance_km: distance_km.toFixed(2),
-        co2_kg: co2_kg.toFixed(3),
-      });
+        co2_kg: co2_kg.toFixed(3)
+      };
     } catch (e) {
-      results.push({ ...r, error: e.message });
+      return {
+        from_input: r.from_location,
+        to_input: r.to_location,
+        mode: r.mode,
+        weight_kg: r.weight_kg,
+        error: e.message
+      };
     }
-  }
+  });
 
   context.res = {
     status: 200,
-    body: results,
+    body: results
   };
 };
