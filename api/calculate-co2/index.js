@@ -5,7 +5,7 @@ let initialized = false;
 // grams CO₂ per tonne-km
 const CO2_FACTORS = { road: 120, air: 255, sea: 25 };
 
-module.exports = async function(context, req) {
+module.exports = async function (context, req) {
   if (!initialized) {
     loadData();
     initialized = true;
@@ -21,8 +21,9 @@ module.exports = async function(context, req) {
     try {
       const fromInfo = lookupLocation(r.from_location, r.mode);
       const toInfo   = lookupLocation(r.to_location,   r.mode);
-      const distKm   = haversine(fromInfo, toInfo);  // pure great-circle
-      const co2kg    = distKm * (parseFloat(r.weight_kg)/1000) * (CO2_FACTORS[r.mode]||0);
+      const distKm   = haversine(fromInfo, toInfo);
+      const co2kg    = distKm * (parseFloat(r.weight_kg) / 1000) * (CO2_FACTORS[r.mode] || 0);
+
       return {
         from_input:  r.from_location,
         from_used:   fromInfo.usedName,
