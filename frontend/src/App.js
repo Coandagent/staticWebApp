@@ -6,92 +6,78 @@ function App() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const handleFileUpload = async event => {
-    const file = event.target.files[0];
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = async e => {
-      console.log('📦 FileReader finished loading');
+    reader.onload = async (evt) => {
+      let parsed = [];
+
+      // 1️⃣ Excel (.xlsx/.xls)
+      if (/\.(xlsx|xls)$/i.test(file.name)) {
+        const data = new Uint8Array(evt.target.result);
+        const wb   = XLSX.read(data, { type: 'array' });
+        const sh   = wb.Sheets[wb.SheetNames[0]];
+        parsed = XLSX.utils.sheet_to_json(sh, { defval: '' });
+      }
+      // 2️⃣ CSV (comma-separated with header)
+      else if (/\.csv$/i.test(file.name)) {
+        const text = evt.target.result.trim();
+        const [hdr, ...lines] = text.split('\n');
+        const keys = hdr.split(',').map(h => h.trim());
+        parsed = lines.map(line => {
+          const vals = line.split(',').map(v => v.trim());
+          return Object.fromEntries(keys.map((k,i) => [k, vals[i]]));
+        });
+      }
+      // 3️⃣ JSON (array of objects)
+      else {
+        parsed = JSON.parse(evt.target.result);
+      }
+
+      // Normalize to API shape
+      const payload = parsed.map(r => ({
+        from_location: r.from_location || r.origin,
+        to_location:   r.to_location   || r.destination,
+        mode:          r.mode          || r.transport,
+        weight_kg:     Number(r.weight_kg ?? r.weight ?? 0),
+      }));
+
+      console.log('Sending payload to API:', payload);
+      setLoading(true);
+
       try {
-        const result = e.target.result;
-        let parsedData = [];
-
-        if (file.name.match(/\.(xlsx|xls)$/i)) {
-          const data = new Uint8Array(result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          parsedData = XLSX.utils.sheet_to_json(sheet, {
-            header: ['from_location', 'to_location', 'mode', 'weight_kg'],
-            defval: ''
-          });
-          console.log('Parsed Excel:', parsedData);
-        } else if (file.name.endsWith('.csv')) {
-          const text = result.trim();
-          parsedData = text.split('\n').map(line => {
-            const [o, d, m, w] = line.split(',').map(x => x.trim());
-            return {
-              from_location: o,
-              to_location: d,
-              mode: m,
-              weight_kg: Number(w) || 0
-            };
-          });
-          console.log('Parsed CSV:', parsedData);
-        } else {
-          const json = JSON.parse(result);
-          parsedData = json.map(r => ({
-            from_location: r.origin,
-            to_location: r.destination,
-            mode: r.transport,
-            weight_kg: Number(r.weight_kg) || 0
-          }));
-          console.log('Parsed JSON:', parsedData);
-        }
-
-        console.log('Sending payload to API:', parsedData);
-        setLoading(true);
-
         const res = await fetch('/api/calculate-co2', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(parsedData)
+          body: JSON.stringify(payload),
         });
-
-        if (!res.ok) {
-          const errText = await res.text();
-          console.error('API error:', res.status, errText);
-          setLoading(false);
-          return;
-        }
-
+        if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
-        console.log('API returned:', data);
-
-        const converted = data.map(r => ({
-          origin: r.from_location,
+        // Format for display
+        const view = data.map(r => ({
+          origin:      r.from_location,
           destination: r.to_location,
-          transport: r.mode,
-          distanceKm: r.distance_km,
-          co2Grams: (parseFloat(r.co2_kg) * 1000).toFixed(0)
+          transport:   r.mode,
+          distanceKm:  r.distance_km,
+          co2Grams:    (parseFloat(r.co2_kg) * 1000).toFixed(0),
         }));
-        setResults(converted);
-
+        setResults(view);
       } catch (err) {
-        console.error('Processing error:', err);
+        console.error('Upload / API error:', err);
+        alert(err.message || 'Unknown error');
       } finally {
         setLoading(false);
       }
     };
 
-    if (file.name.match(/\.(xlsx|xls)$/i)) {
-      reader.readAsArrayBuffer(file);
-    } else {
-      reader.readAsText(file);
-    }
+    // Read file correctly
+    if (/\.(xlsx|xls)$/i.test(file.name)) reader.readAsArrayBuffer(file);
+    else reader.readAsText(file);
 
-    // Reset value to allow re-selecting same file :contentReference[oaicite:4]{index=4}
-    event.target.value = null;
+    // Allow re-selecting same file
+    e.target.value = '';
   };
 
   return (
