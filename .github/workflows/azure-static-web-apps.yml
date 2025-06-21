@@ -1,39 +1,63 @@
+# .github/workflows/azure-static-web-apps.yml
+
 name: Azure Static Web Apps CI/CD
 
 on:
   push:
     branches:
       - main
-      - feature/**    # include your feature branches if desired
+      - feature/**    # include feature branches
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches:
+      - main
+      - feature/**
 
 jobs:
-  build_and_deploy:
+  build_and_deploy_job:
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
 
-      - name: Setup Node
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: false
+          lfs: false
+
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16.x'
 
-      - name: npm install (frontend)
+      - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
-      - name: npm run build (frontend)
+      - name: Build frontend
         working-directory: frontend
         run: npm run build
 
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-          repo_token:                           ${{ secrets.GITHUB_TOKEN }}
-          action:                               "upload"
-          #### Adjust these to match your paths ####
-          app_location:                        "/frontend"
-          api_location:                        "/api"
-          output_location:                     "/frontend/build"
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ASHY_MEADOW_0149B471E }}
+          repo_token:                      ${{ secrets.GITHUB_TOKEN }}
+          action:                          upload
+          app_location:                   "frontend"
+          api_location:                   "api"
+          output_location:                "frontend/build"
+
+  close_pull_request_job:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Close Pull Request Job
+    steps:
+      - name: Close Pull Request
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_ASHY_MEADOW_0149B471E }}
+          action:                          close
