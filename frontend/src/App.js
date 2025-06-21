@@ -1,154 +1,170 @@
 // frontend/src/App.js
 
 import React, { useState } from 'react';
-import './App.css';
-import * as XLSX from 'xlsx';
-// Use relative paths for your local UI components
-import { Card, CardContent } from './components/ui/card';
-import { Button } from './components/ui/button';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import {
+  Container,
+  Navbar,
+  Nav,
+  Button,
+  Form,
+  Table,
+  Card,
+  Dropdown,
+  Row,
+  Col
+} from 'react-bootstrap';
+import { FaUpload, FaCalculator, FaDownload, FaTrash } from 'react-icons/fa';
 
 export default function App() {
+  const [rows, setRows] = useState([
+    { from: '', to: '', mode: 'road', weight: '', eu: true, state: '' }
+  ]);
   const [results, setResults] = useState([]);
+  const [format, setFormat] = useState('pdf');
   const [loading, setLoading] = useState(false);
 
-  const handleFileUpload = async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
+  const handleChange = (idx, field, value) => {
+    const updated = [...rows];
+    updated[idx][field] = value;
+    setRows(updated);
+  };
 
-    reader.onload = async evt => {
-      let parsed = [];
+  const addRow = () => {
+    setRows([...rows, { from: '', to: '', mode: 'road', weight: '', eu: true, state: '' }]);
+  };
 
-      if (/\.(xlsx|xls)$/i.test(file.name)) {
-        const data = new Uint8Array(evt.target.result);
-        const wb   = XLSX.read(data, { type: 'array' });
-        parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
-      } else if (/\.csv$/i.test(file.name)) {
-        const txt            = evt.target.result.trim();
-        const [hdr, ...rows] = txt.split('\n');
-        const keys           = hdr.split(',').map(h => h.trim());
-        parsed               = rows.map(r => {
-          const vals = r.split(',').map(v => v.trim());
-          return Object.fromEntries(keys.map((k,i) => [k, vals[i]]));
-        });
-      } else {
-        parsed = JSON.parse(evt.target.result);
-      }
+  const removeRow = idx => setRows(rows.filter((_, i) => i !== idx));
 
-      const payload = parsed.map(r => ({
-        from_location: r.from_location || r.origin,
-        to_location:   r.to_location   || r.destination,
-        mode:          r.mode          || r.transport,
-        weight_kg:     Number(r.weight_kg || r.weight) || 0,
-        eu:            String(r.eu).toLowerCase() === 'yes',
-        state:         (r.state || '').toLowerCase()
-      }));
+  const calculate = async () => {
+    setLoading(true);
+    const payload = rows.map(r => ({
+      from_location: r.from,
+      to_location:   r.to,
+      mode:          r.mode,
+      weight_kg:     Number(r.weight) || 0,
+      eu:            r.eu,
+      state:         r.state.trim().toLowerCase()
+    }));
+    try {
+      const res = await fetch('/api/calculate-co2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setResults(data);
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setLoading(true);
-      try {
-        const res = await fetch('/api/calculate-co2', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-        setResults(data.map(r => ({
-          origin:      r.from_input,
-          usedFrom:    r.from_used,
-          destination: r.to_input,
-          usedTo:      r.to_used,
-          transport:   r.mode,
-          distanceKm:  r.distance_km,
-          co2Grams:    (parseFloat(r.co2_kg) * 1000).toFixed(0)
-        })));
-      } catch (err) {
-        alert(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (/\.(xlsx|xls)$/i.test(file.name)) reader.readAsArrayBuffer(file);
-    else reader.readAsText(file);
-
-    e.target.value = '';
+  const downloadReport = () => {
+    // TODO: generate and download report in selected format
+    alert(`Preparing your report as ${format.toUpperCase()}...`);
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 p-6">
-      <nav className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-extrabold text-green-800">
-          Coandagent ESG Transport CO₂ Dashboard
-        </h1>
-        <Button variant="outline">
-          Download Full ESG Report
-        </Button>
-      </nav>
+    <>
+      <Navbar bg="light" expand="lg" className="shadow-sm">
+        <Container>
+          <Navbar.Brand className="fw-bold">Coandagent ESG CO₂ Dashboard</Navbar.Brand>
+          <Nav className="ms-auto align-items-center">
+            <Dropdown onSelect={setFormat} className="me-3">
+              <Dropdown.Toggle variant="outline-secondary">
+                Format: {format.toUpperCase()}
+              </Dropdown.Toggle>
+              <Dropdown.Menu>
+                {['pdf','xlsx','csv'].map(f => (
+                  <Dropdown.Item key={f} eventKey={f}>
+                    {f.toUpperCase()}
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+            </Dropdown>
+            <Button variant="primary" onClick={downloadReport}>
+              <FaDownload className="me-1" /> Download Report
+            </Button>
+          </Nav>
+        </Container>
+      </Navbar>
 
-      <section className="mb-6">
-        <Card className="mb-4">
-          <CardContent className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-              <h2 className="text-xl font-semibold">Upload Data</h2>
-              <p className="text-sm text-gray-600">Supports CSV, Excel, JSON</p>
-            </div>
-            <input
-              type="file"
-              accept=".csv,.json,.xlsx,.xls"
-              onChange={handleFileUpload}
-              className="block w-full md:w-auto text-sm text-gray-700 
-                         file:mr-4 file:py-2 file:px-4 file:rounded-full 
-                         file:border-0 file:text-sm file:font-semibold 
-                         file:bg-green-100 file:text-green-800 
-                         hover:file:bg-green-200"
-            />
-          </CardContent>
+      <Container className="my-5">
+        <Card className="shadow-sm mb-4">
+          <Card.Body>
+            <Card.Title>Transport CO₂ Calculator</Card.Title>
+            <Table bordered responsive className="align-middle">
+              <thead className="table-light">
+                <tr>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Mode</th>
+                  <th>Weight (kg)</th>
+                  <th>EU</th>
+                  <th>State</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i}>
+                    <td><Form.Control placeholder="City" value={r.from} onChange={e => handleChange(i,'from',e.target.value)} /></td>
+                    <td><Form.Control placeholder="City" value={r.to} onChange={e => handleChange(i,'to',e.target.value)} /></td>
+                    <td>
+                      <Form.Select value={r.mode} onChange={e => handleChange(i,'mode',e.target.value)}>
+                        <option value="road">Road</option>
+                        <option value="air">Air</option>
+                        <option value="sea">Sea</option>
+                      </Form.Select>
+                    </td>
+                    <td><Form.Control type="number" placeholder="0" value={r.weight} onChange={e => handleChange(i,'weight',e.target.value)} /></td>
+                    <td className="text-center"><Form.Check type="checkbox" checked={r.eu} onChange={e => handleChange(i,'eu',e.target.checked)} /></td>
+                    <td><Form.Control placeholder="State" value={r.state} onChange={e => handleChange(i,'state',e.target.value)} /></td>
+                    <td className="text-center"><Button variant="outline-danger" size="sm" onClick={() => removeRow(i)}><FaTrash /></Button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+            <Row className="mt-3">
+              <Col><Button variant="success" onClick={addRow}><FaUpload className="me-1" /> Add Row</Button></Col>
+              <Col className="text-end"><Button variant="primary" onClick={calculate} disabled={loading}><FaCalculator className="me-1" />{loading ? 'Calculating…' : 'Calculate'}</Button></Col>
+            </Row>
+          </Card.Body>
         </Card>
-        {loading && (
-          <p className="text-center text-gray-700">⏳ Calculating…</p>
-        )}
-      </section>
 
-      {results.length > 0 && (
-        <Card>
-          <CardContent>
-            <h2 className="text-lg font-semibold mb-4">Results</h2>
-            <div className="overflow-auto">
-              <table className="min-w-full table-auto whitespace-nowrap">
-                <thead className="bg-green-200">
+        {results.length > 0 && (
+          <Card className="shadow-sm">
+            <Card.Body>
+              <Card.Title>Results</Card.Title>
+              <Table striped bordered hover responsive className="mt-3">
+                <thead>
                   <tr>
-                    <th className="px-4 py-2 text-left text-sm font-medium">From</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium">To</th>
-                    <th className="px-4 py-2 text-left text-sm font-medium">Mode</th>
-                    <th className="px-4 py-2 text-right text-sm font-medium">Distance (km)</th>
-                    <th className="px-4 py-2 text-right text-sm font-medium">CO₂ (g)</th>
+                    <th>From (Used)</th><th>To (Used)</th><th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r,i) => (
-                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-green-50'}>
-                      <td className="px-4 py-2 text-sm">
-                        {r.origin} <span className="text-gray-500">({r.usedFrom})</span>
-                      </td>
-                      <td className="px-4 py-2 text-sm">
-                        {r.destination} <span className="text-gray-500">({r.usedTo})</span>
-                      </td>
-                      <td className="px-4 py-2 text-sm capitalize">{r.transport}</td>
-                      <td className="px-4 py-2 text-sm text-right font-mono">{r.distanceKm}</td>
-                      <td className="px-4 py-2 text-sm text-right font-mono">{r.co2Grams}</td>
+                  {results.map((r, i) => (
+                    <tr key={i}>
+                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
+                      <td>{r.to_input} <small className="text-muted">({r.to_used})</small></td>
+                      <td className="text-capitalize">{r.mode}</td>
+                      <td>{r.distance_km}</td>
+                      <td>{r.co2_kg}</td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              </Table>
+            </Card.Body>
+          </Card>
+        )}
+      </Container>
 
-      <footer className="mt-8 text-center text-gray-500 text-xs">
-        © {new Date().getFullYear()} Coandagent. All rights reserved.
+      <footer className="bg-light py-3 text-center">
+        <small className="text-secondary">© {new Date().getFullYear()} Coandagent</small>
       </footer>
-    </div>
+    </>
   );
 }
