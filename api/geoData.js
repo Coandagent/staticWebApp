@@ -3,117 +3,102 @@ const path = require('path');
 const { parse } = require('csv-parse/sync');
 
 let cityMap = {};
-let airportArr = [];
-let seaPortArr = [];
+let airportMap = {};
+let seaportMap = {};
+let initialized = false;
 
 function loadData() {
-  // 1) Load cities (semicolon-delimited CSV with header line)
-  const cityText = fs.readFileSync(
+  if (initialized) return;
+  initialized = true;
+
+  // ─── 1) Load cities ≥ 1000 ─────────────────────────────────────────────
+  const cityCsv = fs.readFileSync(
     path.join(__dirname, 'data', 'geonames-all-cities-with-a-population-1000.csv'),
     'utf8'
   );
-  const cityRecs = parse(cityText, {
+  const cities = parse(cityCsv, {
     delimiter: ';',
+    columns: true,
+    skip_empty_lines: true,
+    relax_column_count: true,
+    relax_quotes: true,
+    comment: '#'
+  });
+  cities.forEach(r => {
+    // Coordinates field format: "-13.92862, -72.48496"
+    const [lat, lon] = r['Coordinates'].split(',').map(s => parseFloat(s.trim()));
+    // Index by Name, ASCII Name, and each Alternate Name
+    [ r['Name'], r['ASCII Name'], ...(r['Alternate Names'] || '').split(',') ]
+      .map(n => n && n.trim())
+      .filter(n => n)
+      .forEach(name => {
+        cityMap[name.toLowerCase()] = { lat, lon, usedName: name };
+      });
+  });
+
+  // ─── 2) Load airports (comma-delimited) ───────────────────────────────
+  const airportCsv = fs.readFileSync(
+    path.join(__dirname, 'data', 'airports.csv'),
+    'utf8'
+  );
+  const airports = parse(airportCsv, {
+    delimiter: ',',
     columns: true,
     skip_empty_lines: true,
     relax_column_count: true
   });
-  cityRecs.forEach(r => {
-    // using "Name" column for lookup
-    cityMap[r.Name] = {
-      lat: parseFloat(r.Coordinates.split(',')[0]),
-      lon: parseFloat(r.Coordinates.split(',')[1]),
-      usedName: r.Name
+  airports.forEach(r => {
+    const key = (r.IATA || r.ICAO || r.name).toLowerCase();
+    airportMap[key] = {
+      lat: parseFloat(r.latitude),
+      lon: parseFloat(r.longitude),
+      usedName: r.name
     };
   });
 
-  // 2) Load airports (CSV with headers: e.g. name,lat,lon,...)
-  const airportsText = fs.readFileSync(
-    path.join(__dirname, 'data', 'airports.csv'),
-    'utf8'
-  );
-  const airportRecs = parse(airportsText, {
-    columns: true,
-    skip_empty_lines: true
-  });
-  airportArr = airportRecs.map(r => ({
-    name: r.name,
-    lat: parseFloat(r.latitude),
-    lon: parseFloat(r.longitude)
-  }));
-
-  // 3) Load seaports (CSV with headers: e.g. name,lat,lon,...)
-  const portsText = fs.readFileSync(
+  // ─── 3) Load seaports (comma-delimited) ──────────────────────────────
+  const seaportCsv = fs.readFileSync(
     path.join(__dirname, 'data', 'seaports.csv'),
     'utf8'
   );
-  const portRecs = parse(portsText, {
+  const seaports = parse(seaportCsv, {
+    delimiter: ',',
     columns: true,
-    skip_empty_lines: true
+    skip_empty_lines: true,
+    relax_column_count: true
   });
-  seaPortArr = portRecs.map(r => ({
-    name: r.name,
-    lat: parseFloat(r.latitude),
-    lon: parseFloat(r.longitude)
-  }));
+  seaports.forEach(r => {
+    const key = (r.UNLOCODE || r.port_name).toLowerCase();
+    seaportMap[key] = {
+      lat: parseFloat(r.lat),
+      lon: parseFloat(r.lon),
+      usedName: r.port_name
+    };
+  });
 
   console.log(
-    `Loaded ${Object.keys(cityMap).length} cities, ` +
-    `${airportArr.length} airports, ${seaPortArr.length} seaports`
+    'Loaded:',
+    Object.keys(cityMap).length, 'cities,',
+    Object.keys(airportMap).length, 'airports,',
+    Object.keys(seaportMap).length, 'seaports'
   );
 }
 
-function findNearest(point, arr) {
-  let best = null;
-  let bestDist = Infinity;
-  const toRad = v => (v * Math.PI) / 180;
-  const R = 6371;
-  arr.forEach(p => {
-    const dLat = toRad(p.lat - point.lat);
-    const dLon = toRad(p.lon - point.lon);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(point.lat)) *
-        Math.cos(toRad(p.lat)) *
-        Math.sin(dLon / 2) ** 2;
-    const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = p;
-    }
-  });
-  return best;
-}
-
 function lookupLocation(name, mode) {
-  name = name.trim();
-
+  const key = (name || '').toLowerCase();
+  if (mode === 'road') {
+    if (!cityMap[key]) throw new Error(`Unknown city: ${name}`);
+    return cityMap[key];
+  }
   if (mode === 'air') {
-    // exact airport
-    const exact = airportArr.find(p => p.name === name);
-    if (exact) return { lat: exact.lat, lon: exact.lon, usedName: exact.name };
-    // fallback: nearest airport to city
-    const city = cityMap[name];
-    if (!city) throw new Error(`Unknown air location: "${name}"`);
-    const nearest = findNearest(city, airportArr);
-    return { lat: nearest.lat, lon: nearest.lon, usedName: nearest.name };
+    if (!airportMap[key]) throw new Error(`Unknown airport: ${name}`);
+    return airportMap[key];
   }
-
   if (mode === 'sea') {
-    // exact seaport
-    const exact = seaPortArr.find(p => p.name === name);
-    if (exact) return { lat: exact.lat, lon: exact.lon, usedName: exact.name };
-    // fallback: nearest seaport to city
-    const city = cityMap[name];
-    if (!city) throw new Error(`Unknown sea location: "${name}"`);
-    const nearest = findNearest(city, seaPortArr);
-    return { lat: nearest.lat, lon: nearest.lon, usedName: nearest.name };
+    if (!seaportMap[key]) throw new Error(`Unknown seaport: ${name}`);
+    return seaportMap[key];
   }
-
-  // road: use city coordinates directly
-  const city = cityMap[name];
-  if (city) return { lat: city.lat, lon: city.lon, usedName: city.usedName };
-  throw new Error(`Unknown road location: "${name}"`);
+  throw new Error(`Unsupported mode: ${mode}`);
 }
 
 module.exports = { loadData, lookupLocation };
