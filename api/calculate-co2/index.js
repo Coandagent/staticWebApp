@@ -1,14 +1,19 @@
-// api/calculate-co2/index.js
-const { loadData, lookupLocation, haversine } = require('../geoData');
-let initialized = false;
+const { loadData, lookupLocation } = require('../geoData');
+const { haversine } = require('../haversine');
+let inited = false;
 
 // grams CO₂ per tonne-km
 const CO2_FACTORS = { road: 120, air: 255, sea: 25 };
 
+// Approximate road distance ≈ GC distance × 1.2
+function roadDistance(a, b) {
+  return +(haversine(a, b) * 1.2).toFixed(2);
+}
+
 module.exports = async function (context, req) {
-  if (!initialized) {
+  if (!inited) {
     loadData();
-    initialized = true;
+    inited = true;
   }
 
   const routes = req.body;
@@ -19,20 +24,29 @@ module.exports = async function (context, req) {
 
   const results = routes.map(r => {
     try {
-      const fromInfo = lookupLocation(r.from_location, r.mode);
-      const toInfo   = lookupLocation(r.to_location,   r.mode);
-      const distKm   = haversine(fromInfo, toInfo);
-      const co2kg    = distKm * (parseFloat(r.weight_kg) / 1000) * (CO2_FACTORS[r.mode] || 0);
+      const { mode, from_location, to_location, weight_kg } = r;
+      const fromInfo = lookupLocation(from_location, mode);
+      const toInfo   = lookupLocation(to_location,   mode);
+
+      // choose distance
+      const distKm =
+        mode === 'road'
+          ? roadDistance(fromInfo, toInfo)
+          : +haversine(fromInfo, toInfo).toFixed(2);
+
+      // weight in tonnes
+      const wT = parseFloat(weight_kg) / 1000;
+      const co2 = distKm * wT * (CO2_FACTORS[mode] || 0);
 
       return {
-        from_input:  r.from_location,
+        from_input:  from_location,
         from_used:   fromInfo.usedName,
-        to_input:    r.to_location,
+        to_input:    to_location,
         to_used:     toInfo.usedName,
-        mode:        r.mode,
-        weight_kg:   r.weight_kg,
-        distance_km: distKm.toFixed(2),
-        co2_kg:      co2kg.toFixed(3)
+        mode,
+        weight_kg,
+        distance_km: distKm,
+        co2_kg:      +co2.toFixed(3)
       };
     } catch (e) {
       return {
