@@ -9,10 +9,11 @@ function haversine(a, b) {
   const R = 6371;
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
-  const x = Math.sin(dLat/2)**2 +
-            Math.cos(toRad(a.lat)) *
-            Math.cos(toRad(b.lat)) *
-            Math.sin(dLon/2)**2;
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) *
+      Math.cos(toRad(b.lat)) *
+      Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
@@ -28,33 +29,31 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const results = routes.map(r => {
+  const results = routes.map(({ from_location, to_location, mode, weight_kg }) => {
     try {
-      const fromInfo = lookupLocation(r.from_location, r.mode);
-      const toInfo   = lookupLocation(r.to_location,   r.mode);
-
-      const distance_km = haversine(fromInfo, toInfo);
-      const weight_t    = parseFloat(r.weight_kg) / 1000;
-      const factor      = CO2_FACTORS[r.mode] || 0;
-      const co2_kg      = distance_km * weight_t * factor;
+      const from = lookupLocation(from_location, mode);
+      const to   = lookupLocation(to_location,   mode);
+      const distKm = haversine(from, to);
+      const weightT = parseFloat(weight_kg) / 1000;
+      const co2Kg = distKm * weightT * (CO2_FACTORS[mode] || 0);
 
       return {
-        from_input:  r.from_location,
-        from_used:   fromInfo.usedName,
-        to_input:    r.to_location,
-        to_used:     toInfo.usedName,
-        mode:        r.mode,
-        weight_kg:   r.weight_kg,
-        distance_km: distance_km.toFixed(2),
-        co2_kg:      co2_kg.toFixed(3)
+        from_input:   from_location,
+        from_used:    from.usedName,
+        to_input:     to_location,
+        to_used:      to.usedName,
+        mode,
+        weight_kg,
+        distance_km:  distKm.toFixed(2),
+        co2_kg:       co2Kg.toFixed(3)
       };
-    } catch (err) {
+    } catch (e) {
       return {
-        from_input: r.from_location,
-        to_input:   r.to_location,
-        mode:       r.mode,
-        weight_kg:  r.weight_kg,
-        error:      err.message
+        from_input: from_location,
+        to_input:   to_location,
+        mode,
+        weight_kg,
+        error:      e.message
       };
     }
   });
