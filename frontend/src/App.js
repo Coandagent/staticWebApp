@@ -1,3 +1,5 @@
+// App.js
+
 import React, { useState } from 'react';
 import './App.css';
 import * as XLSX from 'xlsx';
@@ -10,8 +12,10 @@ function App() {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
+
     reader.onload = async evt => {
       let parsed = [];
+
       // Excel
       if (/\.(xlsx|xls)$/i.test(file.name)) {
         const data = new Uint8Array(evt.target.result);
@@ -21,12 +25,12 @@ function App() {
       }
       // CSV
       else if (/\.csv$/i.test(file.name)) {
-        const txt       = evt.target.result.trim();
-        const [hdr,...rows] = txt.split('\n');
-        const keys      = hdr.split(',').map(h=>h.trim());
-        parsed          = rows.map(r=>{
-          const vals = r.split(',').map(v=>v.trim());
-          return Object.fromEntries(keys.map((k,i)=>[k,vals[i]]));
+        const txt         = evt.target.result.trim();
+        const [hdr, ...rows] = txt.split('\n');
+        const keys        = hdr.split(',').map(h => h.trim());
+        parsed            = rows.map(r => {
+          const vals = r.split(',').map(v => v.trim());
+          return Object.fromEntries(keys.map((k, i) => [k, vals[i]]));
         });
       }
       // JSON
@@ -34,31 +38,33 @@ function App() {
         parsed = JSON.parse(evt.target.result);
       }
 
-      // normalize
-      const payload = parsed.map(r=>({
-        from_location: r.from_location||r.origin,
-        to_location:   r.to_location  ||r.destination,
-        mode:          r.mode         ||r.transport,
-        weight_kg:     Number(r.weight_kg||r.weight)||0
+      // normalize payload to include eu & state
+      const payload = parsed.map(r => ({
+        from_location: r.from_location || r.origin,
+        to_location:   r.to_location   || r.destination,
+        mode:          r.mode          || r.transport,
+        weight_kg:     Number(r.weight_kg || r.weight) || 0,
+        eu:            String(r.eu).toLowerCase() === 'yes',
+        state:         (r.state || '').toLowerCase()
       }));
 
       setLoading(true);
       try {
         const res = await fetch('/api/calculate-co2', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
-        setResults(data.map(r=>({
+        setResults(data.map(r => ({
           origin:      r.from_input,
           usedFrom:    r.from_used,
           destination: r.to_input,
           usedTo:      r.to_used,
           transport:   r.mode,
           distanceKm:  r.distance_km,
-          co2Grams:    (parseFloat(r.co2_kg)*1000).toFixed(0)
+          co2Grams:    (parseFloat(r.co2_kg) * 1000).toFixed(0)
         })));
       } catch (err) {
         alert(err.message);
@@ -66,26 +72,42 @@ function App() {
         setLoading(false);
       }
     };
-    if (/\.(xlsx|xls)$/i.test(file.name)) reader.readAsArrayBuffer(file);
-    else reader.readAsText(file);
+
+    if (/\.(xlsx|xls)$/i.test(file.name)) {
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.readAsText(file);
+    }
     e.target.value = '';
   };
 
   return (
     <div className="App">
       <h1>CO₂ Transport Calculator</h1>
-      <input type="file" accept=".csv,.json,.xlsx,.xls" onChange={handleFileUpload}/>
+      <p>
+        <strong>Input requirements:</strong><br/>
+        • A column <code>eu</code> with <code>yes</code> or <code>no</code><br/>
+        • (Optional) A column <code>state</code> for country subdivisions.
+      </p>
+      <input
+        type="file"
+        accept=".csv,.json,.xlsx,.xls"
+        onChange={handleFileUpload}
+      />
       {loading && <p>Calculating…</p>}
-      {results.length>0 && (
+      {results.length > 0 && (
         <table>
           <thead>
             <tr>
-              <th>From (used)</th><th>To (used)</th><th>Mode</th>
-              <th>Distance (km)</th><th>CO₂ (g)</th>
+              <th>From (used)</th>
+              <th>To (used)</th>
+              <th>Mode</th>
+              <th>Distance (km)</th>
+              <th>CO₂ (g)</th>
             </tr>
           </thead>
           <tbody>
-            {results.map((r,i)=>(
+            {results.map((r, i) => (
               <tr key={i}>
                 <td>{r.origin} ({r.usedFrom})</td>
                 <td>{r.destination} ({r.usedTo})</td>
