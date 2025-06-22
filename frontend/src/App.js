@@ -41,13 +41,61 @@ function validateUploadColumns(data) {
     const parts = [];
     if (missing.length) parts.push(`Missing columns: ${missing.join(', ')}`);
     if (extra.length)   parts.push(`Unexpected columns: ${extra.join(', ')}`);
-    parts.push(
-      'Expected headers: ' +
-      want.map(h => `"${h}"`).join(', ')
-    );
+    parts.push('Expected headers: ' + want.map(h => `"${h}"`).join(', '));
     throw new Error(parts.join('; '));
   }
 }
+
+// --- PDF export helper ---
+const buildPdfHtml = (results) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CO₂ Transport Report</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin:40px; position:relative; }
+    .watermark {
+      position:absolute; top:30%; left:50%;
+      transform:translate(-50%,-50%) rotate(-30deg);
+      font-size:120px; color:rgba(0,64,128,0.08); user-select:none;
+    }
+    header { text-align:center; margin-bottom:40px; }
+    header h1 { color:#004080; font-size:28px; margin:0; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; }
+    th { background:#004080; color:#fff; padding:10px; text-align:left; }
+    td { border:1px solid #ddd; padding:8px; }
+    footer { margin-top:40px; font-size:12px; text-align:center; color:#888; }
+  </style>
+</head>
+<body>
+  <div class="watermark">Coandagent</div>
+  <header>
+    <h1>CO₂ Transport Report</h1>
+    <p>${new Date().toLocaleDateString()}</p>
+  </header>
+  <table>
+    <thead>
+      <tr>
+        <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
+        <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${results.map(r => `
+        <tr>
+          <td>${r.from_input}</td><td>${r.from_used}</td>
+          <td>${r.to_input}</td><td>${r.to_used}</td>
+          <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
+          <td>${r.error || ''}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  <footer>© ${new Date().getFullYear()} Coandagent · All rights reserved</footer>
+</body>
+</html>
+`;
 
 export default function App() {
   const [rows, setRows]               = useState([{ from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
@@ -57,7 +105,7 @@ export default function App() {
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast]             = useState({ show:false, message:null });
 
-  // accepts JSX for rich toasts
+  // accept HTML/JSX in toasts
   const showToast = message => {
     setToast({ show:true, message });
     setTimeout(() => setToast({ show:false, message:null }), 4000);
@@ -174,13 +222,13 @@ Paris,Berlin,air,10,yes,de
               <pre style={{ whiteSpace:'pre-wrap' }}>
 [  
   {  
-    "from_location":"Paris",  
-    "to_location":"Berlin",  
-    "mode":"air",  
-    "weight_kg":10,  
-    "eu":true,  
-    "state":"de"  
-  }  
+    "from_location":"Paris",
+    "to_location":"Berlin",
+    "mode":"air",
+    "weight_kg":10,
+    "eu":true,
+    "state":"de"
+  }
 ]
               </pre>
             </div>
@@ -209,7 +257,7 @@ Paris,Berlin,air,10,yes,de
         return;
       }
 
-      // Map & call API
+      // Map & calculate
       const payload = parsed.map(r=>({
         from_location: r.from_location||r.from||r.origin,
         to_location:   r.to_location  ||r.to  ||r.destination,
@@ -231,7 +279,7 @@ Paris,Berlin,air,10,yes,de
       showToast('No results to download');
       return;
     }
-    if (format==='csv'||format==='xlsx') {
+    if (format === 'csv' || format === 'xlsx') {
       const wsData = [
         ['From','Used From','To','Used To','Mode','Distance (km)','CO₂ (kg)','Error'],
         ...results.map(r=>[
@@ -244,8 +292,8 @@ Paris,Berlin,air,10,yes,de
       const ws    = XLSX.utils.aoa_to_sheet(wsData);
       const wb    = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Results');
-      const wbout = XLSX.write(wb,{bookType:format,type:'array'});
-      const blob  = new Blob([wbout],{type:'application/octet-stream'});
+      const wbout = XLSX.write(wb,{ bookType: format, type:'array' });
+      const blob  = new Blob([wbout],{ type:'application/octet-stream' });
       const a     = document.createElement('a');
       a.href      = URL.createObjectURL(blob);
       a.download  = `co2-results.${format}`;
@@ -253,13 +301,11 @@ Paris,Berlin,air,10,yes,de
       a.click();
       document.body.removeChild(a);
     } else {
-      // PDF export (unchanged)
       const win = window.open('','_blank');
-      win.document.write(`
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
-<style>/* ... same as above ... */</style>
-</head><body>/* ... */</body></html>`);
-      win.document.close(); win.focus(); win.print();
+      win.document.write(buildPdfHtml(results));
+      win.document.close();
+      win.focus();
+      win.print();
     }
   };
 
