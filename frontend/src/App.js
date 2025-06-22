@@ -1,6 +1,6 @@
 // frontend/src/App.js
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import {
   Container,
@@ -32,7 +32,6 @@ function validateUploadColumns(data) {
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error('Uploaded file is empty or invalid');
   }
-
   const mapping = {
     from_location: ['from_location', 'from', 'origin', 'orig'],
     to_location:   ['to_location', 'to', 'destination', 'dest'],
@@ -41,11 +40,8 @@ function validateUploadColumns(data) {
     eu:            ['eu', 'in_eu', 'european_union', 'is_eu'],
     state:         ['state', 'state_code', 'province', 'region'],
   };
-
   const headers = Object.keys(data[0]).map(h => h.trim().toLowerCase());
-  const missing = [];
-  const extra   = [];
-
+  const missing = [], extra = [];
   for (const [key, aliases] of Object.entries(mapping)) {
     if (!aliases.some(a => headers.includes(a))) {
       missing.push(`${key} (aliases: ${aliases.join(', ')})`);
@@ -55,7 +51,6 @@ function validateUploadColumns(data) {
   headers.forEach(h => {
     if (!allAliases.includes(h)) extra.push(h);
   });
-
   if (missing.length || extra.length) {
     let msg = '';
     if (missing.length) {
@@ -67,7 +62,6 @@ function validateUploadColumns(data) {
     }
     throw new Error(msg);
   }
-
   return true;
 }
 
@@ -99,31 +93,49 @@ function exampleSnippet(ext) {
 }
 
 export default function App() {
-  const [rows, setRows]             = useState([
-    { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }
-  ]);
-  const [results, setResults]       = useState([]);
-  const [format, setFormat]         = useState('pdf');
-  const [loading, setLoading]       = useState(false);
+  // auth state
+  const [user, setUser] = useState(null);
+
+  // check login on mount
+  useEffect(() => {
+    fetch('/.auth/me')
+      .then(res => {
+        if (!res.ok) throw new Error('Not logged in');
+        return res.json();
+      })
+      .then(data => {
+        // Azure SWA returns { clientPrincipal: { userId, userDetails, identityProvider, userRoles } }
+        setUser(data.clientPrincipal);
+      })
+      .catch(() => {
+        setUser(null);
+      });
+  }, []);
+
+  // UI state
+  const [rows, setRows]               = useState([{ from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
+  const [results, setResults]         = useState([]);
+  const [format, setFormat]           = useState('pdf');
+  const [loading, setLoading]         = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
-  const [toast, setToast]           = useState({ show:false, message:'' });
+  const [toast, setToast]             = useState({ show:false, message:'' });
 
   const showToast = message => {
     setToast({ show:true, message });
     setTimeout(() => setToast({ show:false, message:'' }), 7000);
   };
 
+  // handle rows
   const handleChange = (idx, field, value) => {
     const u = [...rows];
     u[idx][field] = value;
     u[idx].error   = '';
     setRows(u);
   };
-  const addRow = () =>
-    setRows([...rows, { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
-  const removeRow = idx =>
-    setRows(rows.filter((_,i)=>i!==idx));
+  const addRow = () => setRows([...rows, { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
+  const removeRow = idx => setRows(rows.filter((_,i)=>i!==idx));
 
+  // manual validation
   const validate = () => {
     let valid = true;
     const u = rows.map(r => {
@@ -141,13 +153,14 @@ export default function App() {
     return valid;
   };
 
+  // call API
   const calculate = async payload => {
     setLoading(true);
     try {
       const res = await fetch('/api/calculate-co2',{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(payload)
+        headers:{ 'Content-Type':'application/json' },
+        body:JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       setResults(await res.json());
@@ -172,6 +185,7 @@ export default function App() {
     calculate(payload);
   };
 
+  // file upload
   const handleFileUpload = e => {
     const file = e.target.files[0];
     if (!file) return;
@@ -188,15 +202,15 @@ export default function App() {
           parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
         } else if (/\.csv$/i.test(file.name)) {
           const text = evt.target.result;
-          const lines = text.trim().split('\n');
-          const keys  = lines[0].split(',').map(h=>h.trim());
+          const lines= text.trim().split('\n');
+          const keys = lines[0].split(',').map(h=>h.trim());
           parsed = lines.slice(1).map(row=>{
             const vals = row.split(',').map(v=>v.trim());
             return Object.fromEntries(keys.map((k,i)=>[k,vals[i]]));
           });
         } else {
           parsed = JSON.parse(evt.target.result);
-          if (!Array.isArray(parsed)) throw new Error('JSON must be an array of objects');
+          if (!Array.isArray(parsed)) throw new Error('JSON must be an array');
         }
       } catch(err) {
         showToast(`Upload error:\n${err.message}\n\n${exampleSnippet(ext)}`);
@@ -231,6 +245,7 @@ export default function App() {
     else                                   reader.readAsText(file);
   };
 
+  // download / print
   const downloadReport = () => {
     if (!results.length) {
       showToast('No results to download');
@@ -238,7 +253,7 @@ export default function App() {
     }
     if (['csv','xlsx'].includes(format)) {
       const wsData = [
-        ['From','Used From','To','Used To','Mode','Distance (km)','CO₂ (kg)','Error'],
+        ['From','Used From','To','Used To','Mode','Distance','CO₂ (kg)','Error'],
         ...results.map(r=>[
           r.from_input, r.from_used,
           r.to_input,   r.to_used,
@@ -246,8 +261,8 @@ export default function App() {
           r.co2_kg,     r.error||''
         ]),
       ];
-      const ws   = XLSX.utils.aoa_to_sheet(wsData);
-      const wb   = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb,ws,'Results');
       const wbout = XLSX.write(wb,{bookType:format,type:'array'});
       const blob  = new Blob([wbout],{type:'application/octet-stream'});
@@ -260,10 +275,12 @@ export default function App() {
     } else {
       const win = window.open('','_blank');
       win.document.write(`
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>CO₂ Report</title>
 <style>
   body{font-family:'Segoe UI',sans-serif;margin:40px;position:relative}
-  .watermark{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:120px;color:rgba(0,64,128,0.08);user-select:none}
+  .watermark{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);
+    font-size:120px;color:rgba(0,64,128,0.08);user-select:none}
   header{text-align:center;margin-bottom:40px}
   header h1{color:#004080;font-size:28px;margin:0}
   table{width:100%;border-collapse:collapse;margin-top:20px}
@@ -272,10 +289,11 @@ export default function App() {
   footer{margin-top:40px;font-size:12px;text-align:center;color:#888}
 </style></head><body>
   <div class="watermark">Coandagent</div>
-  <header><h1>CO₂ Transport Report</h1><p>${new Date().toLocaleDateString()}</p></header>
+  <header><h1>CO₂ Transport Report</h1>
+    <p>${new Date().toLocaleDateString()}</p></header>
   <table><thead><tr>
     <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
-    <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
+    <th>Mode</th><th>Distance</th><th>CO₂ (kg)</th><th>Error</th>
   </tr></thead><tbody>
   ${results.map(r=>`
     <tr>
@@ -285,7 +303,7 @@ export default function App() {
       <td>${r.error||''}</td>
     </tr>`).join('')}
   </tbody></table>
-  <footer>© ${new Date().getFullYear()} Coandagent · All rights reserved</footer>
+  <footer>© ${new Date().getFullYear()} Coandagent</footer>
 </body></html>`);
       win.document.close();
       win.focus();
@@ -298,33 +316,24 @@ export default function App() {
       <Navbar bg="light" expand="lg" className="shadow-sm">
         <Container fluid>
           <Navbar.Brand>Coandagent ESG CO₂ Dashboard</Navbar.Brand>
-          <Nav className="ms-auto d-flex flex-wrap align-items-center">
-            <Form.Control
-              type="file"
-              accept=".csv,.json,.xlsx,.xls"
-              onChange={handleFileUpload}
-              id="file-upload"
-              style={{display:'none'}}
-            />
-            <Button as="label" htmlFor="file-upload" variant="outline-primary" className="m-1">
-              {fileLoading
-                ? <Spinner animation="border" size="sm"/>
-                : <FaUpload className="me-1"/>}
-              Upload File
-            </Button>
-            <Dropdown onSelect={setFormat} className="m-1">
-              <Dropdown.Toggle variant="outline-secondary">
-                Format: {format.toUpperCase()}
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                {['pdf','xlsx','csv'].map(f =>
-                  <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
-                )}
-              </Dropdown.Menu>
-            </Dropdown>
-            <Button variant="primary" onClick={downloadReport} className="m-1">
-              <FaDownload/> Download Report
-            </Button>
+          <Nav className="ms-auto d-flex align-items-center">
+            {user
+              ? <>
+                  <span className="me-3">Hello, {user.userDetails}</span>
+                  <Button
+                    variant="outline-danger"
+                    size="sm"
+                    onClick={() => window.location.href='/.auth/logout'}>
+                    Logout
+                  </Button>
+                </>
+              : <Button
+                  variant="outline-primary"
+                  size="sm"
+                  onClick={() => window.location.href='/.auth/login/aad'}>
+                  Login
+                </Button>
+            }
           </Nav>
         </Container>
       </Navbar>
@@ -334,7 +343,38 @@ export default function App() {
           <Card.Body>
             <Card.Title>Transport CO₂ Calculator</Card.Title>
 
-            {/* Desktop: table layout */}
+            {/* Upload & download buttons */}
+            <div className="mb-3 d-flex flex-wrap align-items-center">
+              <Form.Control
+                type="file"
+                accept=".csv,.json,.xlsx,.xls"
+                onChange={handleFileUpload}
+                id="file-upload"
+                style={{display:'none'}}
+              />
+              <Button as="label" htmlFor="file-upload" variant="outline-primary" className="me-2 mb-2">
+                {fileLoading
+                  ? <Spinner animation="border" size="sm"/>
+                  : <FaUpload className="me-1"/>}
+                Upload File
+              </Button>
+              <Dropdown onSelect={setFormat} className="me-2 mb-2">
+                <Dropdown.Toggle variant="outline-secondary">
+                  Format: {format.toUpperCase()}
+                </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  {['pdf','xlsx','csv'].map(f =>
+                    <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
+                  )}
+                </Dropdown.Menu>
+              </Dropdown>
+              <Button variant="primary" onClick={downloadReport} className="mb-2">
+                <FaDownload className="me-1"/> Download Report
+              </Button>
+            </div>
+
+            {/* Manual input */}
+            {/* Desktop table */}
             <div className="d-none d-md-block">
               <Table bordered responsive className="align-middle">
                 <thead className="table-light">
@@ -361,27 +401,35 @@ export default function App() {
                         />
                       </td>
                       <td>
-                        <Form.Select value={r.mode}
-                                     onChange={e=>handleChange(i,'mode',e.target.value)}>
+                        <Form.Select
+                          value={r.mode}
+                          onChange={e=>handleChange(i,'mode',e.target.value)}>
                           <option value="road">Road</option>
                           <option value="air">Air</option>
                           <option value="sea">Sea</option>
                         </Form.Select>
                       </td>
                       <td>
-                        <Form.Control type="number" placeholder="0"
-                                      value={r.weight}
-                                      onChange={e=>handleChange(i,'weight',e.target.value)} />
+                        <Form.Control
+                          type="number"
+                          placeholder="0"
+                          value={r.weight}
+                          onChange={e=>handleChange(i,'weight',e.target.value)}
+                        />
                       </td>
                       <td className="text-center">
-                        <Form.Check type="checkbox"
-                                    checked={r.eu}
-                                    onChange={e=>handleChange(i,'eu',e.target.checked)} />
+                        <Form.Check
+                          type="checkbox"
+                          checked={r.eu}
+                          onChange={e=>handleChange(i,'eu',e.target.checked)}
+                        />
                       </td>
                       <td>
-                        <Form.Control placeholder="State-code"
-                                      value={r.state}
-                                      onChange={e=>handleChange(i,'state',e.target.value)} />
+                        <Form.Control
+                          placeholder="State-code"
+                          value={r.state}
+                          onChange={e=>handleChange(i,'state',e.target.value)}
+                        />
                       </td>
                       <td>
                         {r.error && (
@@ -392,8 +440,10 @@ export default function App() {
                         )}
                       </td>
                       <td className="text-center">
-                        <Button variant="outline-danger" size="sm"
-                                onClick={()=>removeRow(i)}>
+                        <Button
+                          variant="outline-danger"
+                          size="sm"
+                          onClick={()=>removeRow(i)}>
                           <FaTrash/>
                         </Button>
                       </td>
@@ -403,7 +453,7 @@ export default function App() {
               </Table>
             </div>
 
-            {/* Mobile: stacked layout */}
+            {/* Mobile stacked */}
             <div className="d-block d-md-none">
               {rows.map((r,i) =>
                 <Card key={i} className="mb-3">
@@ -429,8 +479,9 @@ export default function App() {
                     <Row className="mb-2">
                       <Col xs={6}>
                         <Form.Label>Mode</Form.Label>
-                        <Form.Select value={r.mode}
-                                     onChange={e=>handleChange(i,'mode',e.target.value)}>
+                        <Form.Select
+                          value={r.mode}
+                          onChange={e=>handleChange(i,'mode',e.target.value)}>
                           <option value="road">Road</option>
                           <option value="air">Air</option>
                           <option value="sea">Sea</option>
@@ -438,22 +489,29 @@ export default function App() {
                       </Col>
                       <Col xs={6}>
                         <Form.Label>Weight (kg)</Form.Label>
-                        <Form.Control type="number" placeholder="0"
-                                      value={r.weight}
-                                      onChange={e=>handleChange(i,'weight',e.target.value)} />
+                        <Form.Control
+                          type="number"
+                          placeholder="0"
+                          value={r.weight}
+                          onChange={e=>handleChange(i,'weight',e.target.value)}
+                        />
                       </Col>
                     </Row>
                     <Row className="mb-2 align-items-center">
                       <Col xs="auto">
-                        <Form.Check label="EU"
-                                    checked={r.eu}
-                                    onChange={e=>handleChange(i,'eu',e.target.checked)} />
+                        <Form.Check
+                          label="EU"
+                          checked={r.eu}
+                          onChange={e=>handleChange(i,'eu',e.target.checked)}
+                        />
                       </Col>
                       <Col>
                         <Form.Label>State</Form.Label>
-                        <Form.Control placeholder="State-code"
-                                      value={r.state}
-                                      onChange={e=>handleChange(i,'state',e.target.value)} />
+                        <Form.Control
+                          placeholder="State-code"
+                          value={r.state}
+                          onChange={e=>handleChange(i,'state',e.target.value)}
+                        />
                       </Col>
                     </Row>
                     {r.error && (
@@ -462,8 +520,10 @@ export default function App() {
                       </Badge>
                     )}
                     <div>
-                      <Button variant="outline-danger" size="sm"
-                              onClick={()=>removeRow(i)}>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={()=>removeRow(i)}>
                         <FaTrash className="me-1"/> Remove
                       </Button>
                     </div>
@@ -479,9 +539,10 @@ export default function App() {
                 </Button>
               </Col>
               <Col xs={12} sm="auto" className="ms-sm-auto">
-                <Button variant="primary"
-                        onClick={handleManualCalculate}
-                        disabled={loading}>
+                <Button
+                  variant="primary"
+                  onClick={handleManualCalculate}
+                  disabled={loading}>
                   {loading
                    ? <><Spinner animation="border" size="sm" className="me-1"/> Calculating…</>
                    : <><FaCalculator className="me-1"/> Calculate</>
@@ -535,19 +596,18 @@ export default function App() {
       </Container>
 
       <ToastContainer position="bottom-end" className="p-3">
-        <Toast show={toast.show}
-               bg="warning"
-               style={{ maxWidth: 400, whiteSpace: 'pre-wrap' }}
-               onClose={()=>setToast({show:false,message:''})}
-               delay={7000}
-               autohide>
+        <Toast
+          show={toast.show}
+          bg="warning"
+          style={{ maxWidth: 400, whiteSpace: 'pre-wrap' }}
+          onClose={()=>setToast({show:false,message:''})}
+          delay={7000}
+          autohide>
           <Toast.Header closeButton={false}>
             <FaExclamationCircle className="me-2 text-danger"/>
             <strong className="me-auto">Upload Error</strong>
           </Toast.Header>
-          <Toast.Body>
-            {toast.message}
-          </Toast.Body>
+          <Toast.Body>{toast.message}</Toast.Body>
         </Toast>
       </ToastContainer>
 
