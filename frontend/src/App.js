@@ -165,8 +165,7 @@ export default function App() {
         const data = new Uint8Array(evt.target.result);
         const wb   = XLSX.read(data,{ type:'array' });
         parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{ defval:'' });
-      }
-      else if (/\.csv$/i.test(file.name)) {
+      } else if (/\.csv$/i.test(file.name)) {
         try {
           const lines = text.trim().split('\n');
           const keys  = lines[0].split(',').map(h=>h.trim());
@@ -188,8 +187,7 @@ Paris,Berlin,air,10,yes,de
           e.target.value = '';
           return;
         }
-      }
-      else {
+      } else {
         try {
           parsed = JSON.parse(text);
         } catch {
@@ -249,10 +247,8 @@ Paris,Berlin,air,10,yes,de
       const wsData = [
         ['From','Used From','To','Used To','Mode','Distance (km)','CO₂ (kg)','Error'],
         ...results.map(r=>[
-          r.from_input, r.from_used,
-          r.to_input,   r.to_used,
-          r.mode,       r.distance_km,
-          r.co2_kg,     r.error||''
+          r.from_input, r.from_used, r.to_input, r.to_used,
+          r.mode, r.distance_km, r.co2_kg, r.error||''
         ]),
       ];
       const ws    = XLSX.utils.aoa_to_sheet(wsData);
@@ -281,12 +277,8 @@ Paris,Berlin,air,10,yes,de
         <Container fluid>
           <Navbar.Brand>Coandagent ESG CO₂ Dashboard</Navbar.Brand>
           <Nav className="ms-auto d-flex flex-wrap align-items-center">
-            <Form.Control
-              type="file" accept=".csv,.json,.xlsx,.xls"
-              onChange={handleFileUpload}
-              id="file-upload"
-              style={{display:'none'}}
-            />
+            <Form.Control type="file" accept=".csv,.json,.xlsx,.xls"
+              onChange={handleFileUpload} id="file-upload" style={{display:'none'}} />
             <Button as="label" htmlFor="file-upload" variant="outline-primary" className="m-1">
               {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>}
               Upload File
@@ -319,54 +311,36 @@ Paris,Berlin,air,10,yes,de
                   <th>EU</th><th>State</th><th>Error</th><th></th>
                 </tr>
               </thead>
-              <tbody>{
-                rows.map((r,i)=>
+              <tbody>
+                {rows.map((r,i)=>
                   <tr key={i} className={r.error?'table-danger':''}>
                     <td data-label="From">
-                      <Form.Control
-                        placeholder="City or Code"
-                        value={r.from}
-                        onChange={e=>handleChange(i,'from',e.target.value)}
-                      />
+                      <Form.Control placeholder="City or Code" value={r.from}
+                        onChange={e=>handleChange(i,'from',e.target.value)} />
                     </td>
                     <td data-label="To">
-                      <Form.Control
-                        placeholder="City or Code"
-                        value={r.to}
-                        onChange={e=>handleChange(i,'to',e.target.value)}
-                      />
+                      <Form.Control placeholder="City or Code" value={r.to}
+                        onChange={e=>handleChange(i,'to',e.target.value)} />
                     </td>
                     <td data-label="Mode">
-                      <Form.Select
-                        value={r.mode}
-                        onChange={e=>handleChange(i,'mode',e.target.value)}
-                      >
+                      <Form.Select value={r.mode}
+                        onChange={e=>handleChange(i,'mode',e.target.value)}>
                         <option value="road">Road</option>
                         <option value="air">Air</option>
                         <option value="sea">Sea</option>
                       </Form.Select>
                     </td>
                     <td data-label="Weight">
-                      <Form.Control
-                        type="number"
-                        placeholder="0"
-                        value={r.weight}
-                        onChange={e=>handleChange(i,'weight',e.target.value)}
-                      />
+                      <Form.Control type="number" placeholder="0" value={r.weight}
+                        onChange={e=>handleChange(i,'weight',e.target.value)} />
                     </td>
                     <td data-label="EU" className="text-center">
-                      <Form.Check
-                        type="checkbox"
-                        checked={r.eu}
-                        onChange={e=>handleChange(i,'eu',e.target.checked)}
-                      />
+                      <Form.Check type="checkbox" checked={r.eu}
+                        onChange={e=>handleChange(i,'eu',e.target.checked)} />
                     </td>
                     <td data-label="State">
-                      <Form.Control
-                        placeholder="State-code"
-                        value={r.state}
-                        onChange={e=>handleChange(i,'state',e.target.value)}
-                      />
+                      <Form.Control placeholder="State-code" value={r.state}
+                        onChange={e=>handleChange(i,'state',e.target.value)} />
                     </td>
                     <td data-label="Error">
                       {r.error && (
@@ -379,8 +353,8 @@ Paris,Berlin,air,10,yes,de
                       </Button>
                     </td>
                   </tr>
-                )
-              }</tbody>
+                )}
+              </tbody>
             </Table>
 
             <Row className="mt-3">
@@ -393,7 +367,8 @@ Paris,Berlin,air,10,yes,de
                 <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
                   {loading
                     ? <><Spinner animation="border" size="sm" className="me-1"/> Calculating…</>
-                    : <><FaCalculator className="me-1"/> Calculate</>}
+                    : <><FaCalculator className="me-1"/> Calculate</>
+                  }
                 </Button>
               </Col>
             </Row>
@@ -411,8 +386,8 @@ Paris,Berlin,air,10,yes,de
                     <th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
                   </tr>
                 </thead>
-                <tbody>{
-                  results.map((r,i)=>
+                <tbody>
+                  {results.map((r,i)=>
                     <tr key={i} className={r.error?'table-danger':''}>
                       <td data-label="From (Used)">{r.from_input} <small className="text-muted">({r.from_used})</small></td>
                       <td data-label="To (Used)">{r.to_input} <small className="text-muted">({r.to_used})</small></td>
@@ -425,8 +400,8 @@ Paris,Berlin,air,10,yes,de
                         )}
                       </td>
                     </tr>
-                  )
-                }</tbody>
+                  )}
+                </tbody>
               </Table>
             </Card.Body>
           </Card>
@@ -434,8 +409,7 @@ Paris,Berlin,air,10,yes,de
       </Container>
 
       <ToastContainer position="bottom-end" className="p-3">
-        <Toast
-          bg="warning" show={toast.show}
+        <Toast bg="warning" show={toast.show}
           onClose={()=>setToast({ show:false, message:null })}
           delay={4000} autohide
         >
