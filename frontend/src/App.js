@@ -135,7 +135,7 @@ export default function App() {
     };
 
     if (/\.(xlsx|xls)$/i.test(file.name)) reader.readAsArrayBuffer(file);
-    else                                   reader.readAsText(file);
+    else reader.readAsText(file);
   };
 
   const downloadReport = () => {
@@ -165,15 +165,15 @@ export default function App() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+
     } else if (format === 'pdf') {
       const win = window.open('', '_blank');
       win.document.write(`
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>CO₂ Transport Report</title>
+<html><head><meta charset="utf-8"><title>CO₂ Transport Report</title>
 <style>
   body { font-family: 'Segoe UI', sans-serif; margin:40px; position:relative; }
-  .watermark { position:absolute; top:30%; left:50%; transform:translate(-50%,-50%) rotate(-30deg); 
+  .watermark { position:absolute; top:30%; left:50%; transform:translate(-50%,-50%) rotate(-30deg);
                font-size:120px; color:rgba(0,64,128,0.08); user-select:none; }
   header { text-align:center; margin-bottom:40px; }
   header h1 { color:#004080; margin:10px 0 0; font-size:28px; }
@@ -184,7 +184,8 @@ export default function App() {
 </style>
 </head><body>
   <div class="watermark">Coandagent</div>
-  <header><h1>CO₂ Transport Report</h1>
+  <header>
+    <h1>CO₂ Transport Report</h1>
     <p>${new Date().toLocaleDateString()}</p>
   </header>
   <table><thead>
@@ -198,7 +199,7 @@ export default function App() {
         <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
       </tr>`).join('')}
   </tbody></table>
-  <footer>© ${new Date().getFullYear()} Coandagent • All rights reserved</footer>
+  <footer>© ${new Date().getFullYear()} Coandagent · All rights reserved</footer>
 </body></html>`);
       win.document.close();
       win.focus();
@@ -220,7 +221,9 @@ export default function App() {
               style={{ display: 'none' }}
             />
             <Button as="label" htmlFor="file-upload" variant="outline-primary" className="me-3">
-              {fileLoading ? <Spinner animation="border" size="sm" /> : <FaUpload className="me-1" />}
+              {fileLoading
+                ? <Spinner animation="border" size="sm" />
+                : <FaUpload className="me-1" />}
               Upload File
             </Button>
             <Dropdown onSelect={setFormat} className="me-3">
@@ -254,25 +257,52 @@ export default function App() {
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={i} className={r.error ? 'table-danger' : ''}>
-                    <td><Form.Control placeholder="City or Code" value={r.from}
-                          onChange={e => handleChange(i, 'from', e.target.value)} /></td>
-                    <td><Form.Control placeholder="City or Code" value={r.to}
-                          onChange={e => handleChange(i, 'to', e.target.value)} /></td>
                     <td>
-                      <Form.Select value={r.mode} onChange={e => handleChange(i, 'mode', e.target.value)}>
+                      <Form.Control
+                        placeholder="City or Code"
+                        value={r.from}
+                        onChange={e => handleChange(i, 'from', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
+                        placeholder="City or Code"
+                        value={r.to}
+                        onChange={e => handleChange(i, 'to', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <Form.Select
+                        value={r.mode}
+                        onChange={e => handleChange(i, 'mode', e.target.value)}
+                      >
                         <option value="road">Road</option>
                         <option value="air">Air</option>
                         <option value="sea">Sea</option>
                       </Form.Select>
                     </td>
-                    <td><Form.Control type="number" placeholder="0" value={r.weight}
-                          onChange={e => handleChange(i, 'weight', e.target.value)} /></td>
-                    <td className="text-center">
-                      <Form.Check type="checkbox" checked={r.eu}
-                        onChange={e => handleChange(i, 'eu', e.target.checked)} />
+                    <td>
+                      <Form.Control
+                        type="number"
+                        placeholder="0"
+                        value={r.weight}
+                        onChange={e => handleChange(i, 'weight', e.target.value)}
+                      />
                     </td>
-                    <td><Form.Control placeholder="State-code" value={r.state}
-                          onChange={e => handleChange(i, 'state', e.target.value)} /></td>
+                    <td className="text-center">
+                      <Form.Check
+                        type="checkbox"
+                        checked={r.eu}
+                        onChange={e => handleChange(i, 'eu', e.target.checked)}
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
+                        placeholder="State-code"
+                        value={r.state}
+                        onChange={e => handleChange(i, 'state', e.target.value)}
+                      />
+                    </td>
                     <td><small className="text-danger">{r.error}</small></td>
                     <td className="text-center">
                       <Button variant="outline-danger" size="sm" onClick={() => removeRow(i)}>
@@ -283,6 +313,7 @@ export default function App() {
                 ))}
               </tbody>
             </Table>
+
             <Row className="mt-3">
               <Col>
                 <Button variant="success" onClick={addRow}>
@@ -292,7 +323,7 @@ export default function App() {
               <Col className="text-end">
                 <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
                   {loading
-                    ? <> <Spinner animation="border" size="sm" className="me-1" /> Calculating… </>
+                    ? <><Spinner animation="border" size="sm" className="me-1" /> Calculating…</>
                     : <><FaCalculator className="me-1" /> Calculate</>
                   }
                 </Button>
