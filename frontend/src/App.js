@@ -14,29 +14,55 @@ import {
   Row,
   Col,
   Spinner,
+  Toast,
+  ToastContainer,
 } from 'react-bootstrap';
-import { FaUpload, FaCalculator, FaDownload, FaTrash } from 'react-icons/fa';
+import { FaUpload, FaCalculator, FaDownload, FaTrash, FaExclamationCircle } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 
 export default function App() {
   const [rows, setRows] = useState([
-    { from: '', to: '', mode: 'road', weight: '', eu: true, state: '' }
+    { from: '', to: '', mode: 'road', weight: '', eu: true, state: '', error: '' }
   ]);
   const [results, setResults] = useState([]);
   const [format, setFormat] = useState('pdf');
   const [loading, setLoading] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '' });
+
+  const showToast = (message) => {
+    setToast({ show: true, message });
+    setTimeout(() => setToast({ show: false, message: '' }), 4000);
+  };
 
   const handleChange = (idx, field, value) => {
     const updated = [...rows];
     updated[idx][field] = value;
+    updated[idx].error = '';
     setRows(updated);
   };
 
   const addRow = () =>
-    setRows([...rows, { from: '', to: '', mode: 'road', weight: '', eu: true, state: '' }]);
+    setRows([...rows, { from: '', to: '', mode: 'road', weight: '', eu: true, state: '', error: '' }]);
   const removeRow = idx =>
     setRows(rows.filter((_, i) => i !== idx));
+
+  const validate = () => {
+    let valid = true;
+    const updated = rows.map(r => {
+      const errs = [];
+      if (!r.from) errs.push('Origin required');
+      if (!r.to) errs.push('Destination required');
+      if (!r.weight) errs.push('Weight required');
+      return { ...r, error: errs.join(', ') };
+    });
+    setRows(updated);
+    if (updated.some(r => r.error)) {
+      showToast('Please fix input errors');
+      valid = false;
+    }
+    return valid;
+  };
 
   const calculate = async (payload) => {
     setLoading(true);
@@ -50,7 +76,7 @@ export default function App() {
       const data = await res.json();
       setResults(data);
     } catch (err) {
-      alert(err.message);
+      showToast(err.message);
     } finally {
       setLoading(false);
       setFileLoading(false);
@@ -58,6 +84,7 @@ export default function App() {
   };
 
   const handleManualCalculate = () => {
+    if (!validate()) return;
     const payload = rows.map(r => ({
       from_location: r.from,
       to_location:   r.to,
@@ -113,7 +140,7 @@ export default function App() {
 
   const downloadReport = () => {
     if (!results.length) {
-      alert('No results to download.');
+      showToast('No results to download');
       return;
     }
 
@@ -143,77 +170,36 @@ export default function App() {
       win.document.write(`
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>CO₂ Transport Report</title>
-  <style>
-    body { font-family: 'Segoe UI', sans-serif; margin: 40px; position: relative; }
-    .watermark {
-      position: absolute;
-      top: 30%; left: 50%;
-      transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: 120px; color: rgba(0,64,128,0.08);
-      pointer-events: none;
-      user-select: none;
-    }
-    header { text-align: center; margin-bottom: 40px; }
-    header img { height: 60px; }
-    header h1 { color: #004080; margin: 10px 0 0; font-size: 28px; }
-    header p { margin: 4px 0 0; font-size: 14px; color: #666; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th {
-      background-color: #004080;
-      color: white;
-      padding: 10px;
-      text-align: left;
-      font-size: 14px;
-    }
-    td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      font-size: 13px;
-    }
-    footer {
-      margin-top: 40px;
-      font-size: 12px;
-      text-align: center;
-      color: #888;
-    }
-  </style>
-</head>
-<body>
+<head><meta charset="utf-8"><title>CO₂ Transport Report</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; margin:40px; position:relative; }
+  .watermark { position:absolute; top:30%; left:50%; transform:translate(-50%,-50%) rotate(-30deg); 
+               font-size:120px; color:rgba(0,64,128,0.08); user-select:none; }
+  header { text-align:center; margin-bottom:40px; }
+  header h1 { color:#004080; margin:10px 0 0; font-size:28px; }
+  table { width:100%; border-collapse:collapse; margin-top:20px; }
+  th { background:#004080; color:#fff; padding:10px; text-align:left; }
+  td { border:1px solid #ddd; padding:8px; }
+  footer { margin-top:40px; font-size:12px; text-align:center; color:#888; }
+</style>
+</head><body>
   <div class="watermark">Coandagent</div>
-  <header>
-    <img src="https://your-cdn.com/logo.png" alt="Coandagent logo">
-    <h1>CO₂ Transport Report</h1>
-    <p>Generated on ${new Date().toLocaleDateString()}</p>
+  <header><h1>CO₂ Transport Report</h1>
+    <p>${new Date().toLocaleDateString()}</p>
   </header>
-  <table>
-    <thead>
+  <table><thead>
+    <tr><th>From</th><th>Used From</th><th>To</th><th>Used To</th>
+        <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th></tr>
+  </thead><tbody>
+    ${results.map(r => `
       <tr>
-        <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
-        <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${results.map(r => `
-        <tr>
-          <td>${r.from_input}</td>
-          <td>${r.from_used}</td>
-          <td>${r.to_input}</td>
-          <td>${r.to_used}</td>
-          <td>${r.mode}</td>
-          <td>${r.distance_km}</td>
-          <td>${r.co2_kg}</td>
-        </tr>
-      `).join('')}
-    </tbody>
-  </table>
-  <footer>
-    © ${new Date().getFullYear()} Coandagent • All rights reserved
-  </footer>
-</body>
-</html>`);
+        <td>${r.from_input}</td><td>${r.from_used}</td>
+        <td>${r.to_input}</td><td>${r.to_used}</td>
+        <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
+      </tr>`).join('')}
+  </tbody></table>
+  <footer>© ${new Date().getFullYear()} Coandagent • All rights reserved</footer>
+</body></html>`);
       win.document.close();
       win.focus();
       win.print();
@@ -234,10 +220,7 @@ export default function App() {
               style={{ display: 'none' }}
             />
             <Button as="label" htmlFor="file-upload" variant="outline-primary" className="me-3">
-              {fileLoading
-                ? <Spinner animation="border" size="sm" />
-                : <FaUpload className="me-1" />
-              }
+              {fileLoading ? <Spinner animation="border" size="sm" /> : <FaUpload className="me-1" />}
               Upload File
             </Button>
             <Dropdown onSelect={setFormat} className="me-3">
@@ -264,59 +247,33 @@ export default function App() {
             <Table bordered responsive className="align-middle">
               <thead className="table-light">
                 <tr>
-                  <th>From</th><th>To</th><th>Mode</th>
-                  <th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
+                  <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
+                  <th>EU</th><th>State</th><th>Error</th><th></th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r,i) => (
-                  <tr key={i}>
+                {rows.map((r, i) => (
+                  <tr key={i} className={r.error ? 'table-danger' : ''}>
+                    <td><Form.Control placeholder="City or Code" value={r.from}
+                          onChange={e => handleChange(i, 'from', e.target.value)} /></td>
+                    <td><Form.Control placeholder="City or Code" value={r.to}
+                          onChange={e => handleChange(i, 'to', e.target.value)} /></td>
                     <td>
-                      <Form.Control
-                        placeholder="City or Code"
-                        value={r.from}
-                        onChange={e => handleChange(i,'from',e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <Form.Control
-                        placeholder="City or Code"
-                        value={r.to} 
-                        onChange={e => handleChange(i,'to',e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <Form.Select
-                        value={r.mode}
-                        onChange={e => handleChange(i,'mode',e.target.value)}
-                      >
+                      <Form.Select value={r.mode} onChange={e => handleChange(i, 'mode', e.target.value)}>
                         <option value="road">Road</option>
                         <option value="air">Air</option>
                         <option value="sea">Sea</option>
                       </Form.Select>
                     </td>
-                    <td>
-                      <Form.Control
-                        type="number"
-                        placeholder="0"
-                        value={r.weight}
-                        onChange={e => handleChange(i,'weight',e.target.value)}
-                      />
-                    </td>
+                    <td><Form.Control type="number" placeholder="0" value={r.weight}
+                          onChange={e => handleChange(i, 'weight', e.target.value)} /></td>
                     <td className="text-center">
-                      <Form.Check
-                        type="checkbox"
-                        checked={r.eu}
-                        onChange={e => handleChange(i,'eu',e.target.checked)}
-                      />
+                      <Form.Check type="checkbox" checked={r.eu}
+                        onChange={e => handleChange(i, 'eu', e.target.checked)} />
                     </td>
-                    <td>
-                      <Form.Control
-                        placeholder="State-code"
-                        value={r.state}
-                        onChange={e => handleChange(i,'state',e.target.value)}
-                      />
-                    </td>
+                    <td><Form.Control placeholder="State-code" value={r.state}
+                          onChange={e => handleChange(i, 'state', e.target.value)} /></td>
+                    <td><small className="text-danger">{r.error}</small></td>
                     <td className="text-center">
                       <Button variant="outline-danger" size="sm" onClick={() => removeRow(i)}>
                         <FaTrash />
@@ -335,8 +292,9 @@ export default function App() {
               <Col className="text-end">
                 <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
                   {loading
-                    ? 'Calculating…'
-                    : <><FaCalculator className="me-1" /> Calculate</>}
+                    ? <> <Spinner animation="border" size="sm" className="me-1" /> Calculating… </>
+                    : <><FaCalculator className="me-1" /> Calculate</>
+                  }
                 </Button>
               </Col>
             </Row>
@@ -355,7 +313,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r,i) => (
+                  {results.map((r, i) => (
                     <tr key={i}>
                       <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
                       <td>{r.to_input}   <small className="text-muted">({r.to_used})</small></td>
@@ -370,6 +328,16 @@ export default function App() {
           </Card>
         )}
       </Container>
+
+      <ToastContainer position="bottom-end" className="p-3">
+        <Toast bg="warning" show={toast.show} onClose={() => setToast({ show: false, message: '' })} delay={4000} autohide>
+          <Toast.Header>
+            <FaExclamationCircle className="me-2 text-danger" />
+            <strong className="me-auto">Error</strong>
+          </Toast.Header>
+          <Toast.Body>{toast.message}</Toast.Body>
+        </Toast>
+      </ToastContainer>
 
       <footer className="bg-light py-3 text-center">
         <small className="text-secondary">© {new Date().getFullYear()} Coandagent</small>
