@@ -4,27 +4,11 @@ import React, { useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 import {
-  Container,
-  Navbar,
-  Nav,
-  Button,
-  Form,
-  Table,
-  Card,
-  Dropdown,
-  Row,
-  Col,
-  Spinner,
-  Toast,
-  ToastContainer,
-  Badge,
+  Container, Navbar, Nav, Button, Form, Table, Card,
+  Dropdown, Row, Col, Spinner, Toast, ToastContainer, Badge,
 } from 'react-bootstrap';
 import {
-  FaUpload,
-  FaCalculator,
-  FaDownload,
-  FaTrash,
-  FaExclamationCircle,
+  FaUpload, FaCalculator, FaDownload, FaTrash, FaExclamationCircle,
 } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 
@@ -41,12 +25,57 @@ function validateUploadColumns(data) {
     const parts = [];
     if (missing.length) parts.push(`Missing columns: ${missing.join(', ')}`);
     if (extra.length)   parts.push(`Unexpected columns: ${extra.join(', ')}`);
-    parts.push(
-      'Expected headers: ' +
-      want.map(h => `"${h}"`).join(', ')
-    );
+    parts.push('Expected headers: ' + want.map(h => `"${h}"`).join(', '));
     throw new Error(parts.join('; '));
   }
+}
+
+// --- build PDF HTML helper ---
+function buildPdfHtml(results) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CO₂ Transport Report</title>
+  <style>
+    body { font-family:'Segoe UI',sans-serif; margin:40px; position:relative; }
+    .watermark {
+      position:absolute; top:30%; left:50%;
+      transform:translate(-50%,-50%) rotate(-30deg);
+      font-size:120px; color:rgba(0,64,128,0.08); user-select:none;
+    }
+    header { text-align:center; margin-bottom:40px; }
+    header h1 { color:#004080; font-size:28px; margin:0; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; }
+    th { background:#004080; color:#fff; padding:10px; text-align:left; }
+    td { border:1px solid #ddd; padding:8px; }
+    footer { margin-top:40px; font-size:12px; text-align:center; color:#888; }
+  </style>
+</head>
+<body>
+  <div class="watermark">Coandagent</div>
+  <header><h1>CO₂ Transport Report</h1><p>${new Date().toLocaleDateString()}</p></header>
+  <table>
+    <thead>
+      <tr>
+        <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
+        <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${results.map(r => `
+        <tr>
+          <td>${r.from_input}</td><td>${r.from_used}</td>
+          <td>${r.to_input}</td><td>${r.to_used}</td>
+          <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
+          <td>${r.error || ''}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  <footer>© ${new Date().getFullYear()} Coandagent · All rights reserved</footer>
+</body>
+</html>`;
 }
 
 export default function App() {
@@ -57,7 +86,6 @@ export default function App() {
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast]             = useState({ show:false, message:null });
 
-  // accepts JSX for rich toasts
   const showToast = message => {
     setToast({ show:true, message });
     setTimeout(() => setToast({ show:false, message:null }), 4000);
@@ -99,7 +127,7 @@ export default function App() {
       const res = await fetch('/api/calculate-co2', {
         method:'POST',
         headers:{ 'Content-Type':'application/json' },
-        body:JSON.stringify(payload)
+        body:JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       setResults(await res.json());
@@ -172,15 +200,8 @@ Paris,Berlin,air,10,yes,de
             <div>
               <p><strong>Upload error:</strong> Invalid JSON.</p>
               <pre style={{ whiteSpace:'pre-wrap' }}>
-[  
-  {  
-    "from_location":"Paris",  
-    "to_location":"Berlin",  
-    "mode":"air",  
-    "weight_kg":10,  
-    "eu":true,  
-    "state":"de"  
-  }  
+[
+  {"from_location":"Paris","to_location":"Berlin","mode":"air","weight_kg":10,"eu":true,"state":"de"}
 ]
               </pre>
             </div>
@@ -209,7 +230,7 @@ Paris,Berlin,air,10,yes,de
         return;
       }
 
-      // Map & call API
+      // Map & API call
       const payload = parsed.map(r=>({
         from_location: r.from_location||r.from||r.origin,
         to_location:   r.to_location  ||r.to  ||r.destination,
@@ -253,13 +274,11 @@ Paris,Berlin,air,10,yes,de
       a.click();
       document.body.removeChild(a);
     } else {
-      // PDF export (unchanged)
       const win = window.open('','_blank');
-      win.document.write(`
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
-<style>/* ... same as above ... */</style>
-</head><body>/* ... */</body></html>`);
-      win.document.close(); win.focus(); win.print();
+      win.document.write(buildPdfHtml(results));
+      win.document.close();
+      win.focus();
+      win.print();
     }
   };
 
@@ -270,14 +289,14 @@ Paris,Berlin,air,10,yes,de
           <Navbar.Brand>Coandagent ESG CO₂ Dashboard</Navbar.Brand>
           <Nav className="ms-auto d-flex flex-wrap align-items-center">
             <Form.Control
-              type="file"
-              accept=".csv,.json,.xlsx,.xls"
-              onChange={handleFileUpload}
-              id="file-upload"
+              type="file" accept=".csv,.json,.xlsx,.xls"
+              onChange={handleFileUpload} id="file-upload"
               style={{display:'none'}}
             />
             <Button as="label" htmlFor="file-upload" variant="outline-primary" className="m-1">
-              {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>}
+              {fileLoading
+                ? <Spinner animation="border" size="sm"/>
+                : <FaUpload className="me-1"/>}
               Upload File
             </Button>
             <Dropdown onSelect={setFormat} className="m-1">
@@ -285,7 +304,7 @@ Paris,Berlin,air,10,yes,de
                 Format: {format.toUpperCase()}
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                {['pdf','xlsx','csv'].map(f=>
+                {['pdf','xlsx','csv'].map(f =>
                   <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
                 )}
               </Dropdown.Menu>
@@ -308,36 +327,54 @@ Paris,Berlin,air,10,yes,de
                   <th>EU</th><th>State</th><th>Error</th><th></th>
                 </tr>
               </thead>
-              <tbody>
-                {rows.map((r,i)=>
+              <tbody>{
+                rows.map((r,i)=>
                   <tr key={i} className={r.error?'table-danger':''}>
                     <td data-label="From">
-                      <Form.Control placeholder="City or Code" value={r.from}
-                        onChange={e=>handleChange(i,'from',e.target.value)}/>
+                      <Form.Control
+                        placeholder="City or Code"
+                        value={r.from}
+                        onChange={e=>handleChange(i,'from',e.target.value)}
+                      />
                     </td>
                     <td data-label="To">
-                      <Form.Control placeholder="City or Code" value={r.to}
-                        onChange={e=>handleChange(i,'to',e.target.value)}/>
+                      <Form.Control
+                        placeholder="City or Code"
+                        value={r.to}
+                        onChange={e=>handleChange(i,'to',e.target.value)}
+                      />
                     </td>
                     <td data-label="Mode">
-                      <Form.Select value={r.mode}
-                        onChange={e=>handleChange(i,'mode',e.target.value)}>
+                      <Form.Select
+                        value={r.mode}
+                        onChange={e=>handleChange(i,'mode',e.target.value)}
+                      >
                         <option value="road">Road</option>
                         <option value="air">Air</option>
                         <option value="sea">Sea</option>
                       </Form.Select>
                     </td>
                     <td data-label="Weight">
-                      <Form.Control type="number" placeholder="0" value={r.weight}
-                        onChange={e=>handleChange(i,'weight',e.target.value)}/>
+                      <Form.Control
+                        type="number"
+                        placeholder="0"
+                        value={r.weight}
+                        onChange={e=>handleChange(i,'weight',e.target.value)}
+                      />
                     </td>
                     <td data-label="EU" className="text-center">
-                      <Form.Check type="checkbox" checked={r.eu}
-                        onChange={e=>handleChange(i,'eu',e.target.checked)}/>
+                      <Form.Check
+                        type="checkbox"
+                        checked={r.eu}
+                        onChange={e=>handleChange(i,'eu',e.target.checked)}
+                      />
                     </td>
                     <td data-label="State">
-                      <Form.Control placeholder="State-code" value={r.state}
-                        onChange={e=>handleChange(i,'state',e.target.value)}/>
+                      <Form.Control
+                        placeholder="State-code"
+                        value={r.state}
+                        onChange={e=>handleChange(i,'state',e.target.value)}
+                      />
                     </td>
                     <td data-label="Error">
                       {r.error && (
@@ -350,8 +387,8 @@ Paris,Berlin,air,10,yes,de
                       </Button>
                     </td>
                   </tr>
-                )}
-              </tbody>
+                )
+              }</tbody>
             </Table>
 
             <Row className="mt-3">
@@ -364,8 +401,7 @@ Paris,Berlin,air,10,yes,de
                 <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
                   {loading
                     ? <><Spinner animation="border" size="sm" className="me-1"/> Calculating…</>
-                    : <><FaCalculator className="me-1"/> Calculate</>
-                  }
+                    : <><FaCalculator className="me-1"/> Calculate</>}
                 </Button>
               </Col>
             </Row>
@@ -383,15 +419,11 @@ Paris,Berlin,air,10,yes,de
                     <th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {results.map((r,i)=>
+                <tbody>{
+                  results.map((r,i)=>
                     <tr key={i} className={r.error?'table-danger':''}>
-                      <td data-label="From (Used)">
-                        {r.from_input} <small className="text-muted">({r.from_used})</small>
-                      </td>
-                      <td data-label="To (Used)">
-                        {r.to_input} <small className="text-muted">({r.to_used})</small>
-                      </td>
+                      <td data-label="From (Used)">{r.from_input} <small className="text-muted">({r.from_used})</small></td>
+                      <td data-label="To (Used)">{r.to_input} <small className="text-muted">({r.to_used})</small></td>
                       <td data-label="Mode" className="text-capitalize">{r.mode}</td>
                       <td data-label="Distance">{r.distance_km}</td>
                       <td data-label="CO₂">{r.co2_kg}</td>
@@ -401,8 +433,8 @@ Paris,Berlin,air,10,yes,de
                         )}
                       </td>
                     </tr>
-                  )}
-                </tbody>
+                  )
+                }</tbody>
               </Table>
             </Card.Body>
           </Card>
@@ -411,18 +443,16 @@ Paris,Berlin,air,10,yes,de
 
       <ToastContainer position="bottom-end" className="p-3">
         <Toast
-          bg="warning"
-          show={toast.show}
+          bg="warning" show={toast.show}
           onClose={()=>setToast({ show:false, message:null })}
-          delay={4000}
-          autohide
+          delay={4000} autohide
         >
           <Toast.Header>
             <FaExclamationCircle className="me-2 text-danger"/>
             <strong className="me-auto">Error</strong>
           </Toast.Header>
           <Toast.Body>{toast.message}</Toast.Body>
-        </Toast>
+        </Toast>`
       </ToastContainer>
 
       <footer className="bg-light py-3 text-center">
