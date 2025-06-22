@@ -59,7 +59,7 @@ export default function App() {
 
   const handleManualCalculate = () => {
     const payload = rows.map(r => ({
-      from_location: r.from,
+      from_location: r.from,     // accepts city name or airport/seaport code
       to_location:   r.to,
       mode:          r.mode,
       weight_kg:     Number(r.weight) || 0,
@@ -119,7 +119,7 @@ export default function App() {
 
     if (format === 'csv' || format === 'xlsx') {
       const wsData = [
-        ['From','Used From','To','Used To','Mode','Distance_km','CO2_kg'],
+        ['From','Used From','To','Used To','Mode','Distance (km)','CO₂ (kg)'],
         ...results.map(r => [
           r.from_input, r.from_used,
           r.to_input,   r.to_used,
@@ -135,22 +135,61 @@ export default function App() {
       const a     = document.createElement('a');
       a.href      = URL.createObjectURL(blob);
       a.download  = `co2-results.${format}`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
     } else if (format === 'pdf') {
       const win = window.open('', '_blank');
-      win.document.write('<html><head><title>CO₂ Report</title></head><body>');
-      win.document.write('<h1>CO₂ Transport Report</h1>');
-      win.document.write('<table border="1" style="width:100%;border-collapse:collapse;">');
-      win.document.write('<tr><th>From</th><th>Used From</th><th>To</th><th>Used To</th><th>Mode</th><th>Distance</th><th>CO₂ (kg)</th></tr>');
-      results.forEach(r => {
-        win.document.write(`<tr>
-          <td>${r.from_input}</td><td>${r.from_used}</td>
-          <td>${r.to_input}</td><td>${r.to_used}</td>
-          <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
-        </tr>`);
-      });
-      win.document.write('</table></body></html>');
+      win.document.write(`
+        <html>
+          <head>
+            <title>CO₂ Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 40px; position: relative; }
+              .watermark {
+                position: absolute; top: 30%; left: 25%;
+                font-size: 100px; color: rgba(0,0,255,0.05);
+                transform: rotate(-30deg);
+                white-space: nowrap;
+              }
+              h1, h2 { color: #004080; margin: 0; }
+              h1 { font-size: 32px; }
+              h2 { font-size: 20px; margin-bottom: 20px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+              th { background-color: #004080; color: white; padding: 8px; }
+              td { border: 1px solid #ddd; padding: 6px; }
+            </style>
+          </head>
+          <body>
+            <div class="watermark">Coandagent</div>
+            <h1>Coandagent</h1>
+            <h2>CO₂ Transport Report</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
+                  <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${results.map(r => `
+                  <tr>
+                    <td>${r.from_input}</td>
+                    <td>${r.from_used}</td>
+                    <td>${r.to_input}</td>
+                    <td>${r.to_used}</td>
+                    <td>${r.mode}</td>
+                    <td>${r.distance_km}</td>
+                    <td>${r.co2_kg}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `);
       win.document.close();
+      win.focus();
       win.print();
     }
   };
@@ -161,7 +200,6 @@ export default function App() {
         <Container>
           <Navbar.Brand>Coandagent ESG CO₂ Dashboard</Navbar.Brand>
           <Nav className="ms-auto align-items-center">
-            {/* Hidden file input */}
             <Form.Control
               type="file"
               accept=".csv,.json,.xlsx,.xls"
@@ -169,7 +207,6 @@ export default function App() {
               id="file-upload"
               style={{ display: 'none' }}
             />
-            {/* Upload button */}
             <Button as="label" htmlFor="file-upload" variant="outline-primary" className="me-3">
               {fileLoading
                 ? <Spinner animation="border" size="sm" />
@@ -178,7 +215,6 @@ export default function App() {
               Upload File
             </Button>
 
-            {/* Format selector */}
             <Dropdown onSelect={setFormat} className="me-3">
               <Dropdown.Toggle variant="outline-secondary">
                 Format: {format.toUpperCase()}
@@ -190,7 +226,6 @@ export default function App() {
               </Dropdown.Menu>
             </Dropdown>
 
-            {/* Download report */}
             <Button variant="primary" onClick={downloadReport}>
               <FaDownload /> Download Report
             </Button>
@@ -212,28 +247,72 @@ export default function App() {
               <tbody>
                 {rows.map((r,i) => (
                   <tr key={i}>
-                    <td><Form.Control placeholder="City" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)} /></td>
-                    <td><Form.Control placeholder="City" value={r.to} onChange={e=>handleChange(i,'to',e.target.value)} /></td>
                     <td>
-                      <Form.Select value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}>
+                      <Form.Control
+                        placeholder="City or Code"
+                        value={r.from}
+                        onChange={e => handleChange(i,'from',e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
+                        placeholder="City or Code"
+                        value={r.to}
+                        onChange={e => handleChange(i,'to',e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <Form.Select
+                        value={r.mode}
+                        onChange={e => handleChange(i,'mode',e.target.value)}
+                      >
                         <option value="road">Road</option>
                         <option value="air">Air</option>
                         <option value="sea">Sea</option>
                       </Form.Select>
                     </td>
-                    <td><Form.Control type="number" placeholder="0" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)} /></td>
-                    <td className="text-center"><Form.Check type="checkbox" checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)} /></td>
-                    <td><Form.Control placeholder="State" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)} /></td>
-                    <td className="text-center"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash /></Button></td>
+                    <td>
+                      <Form.Control
+                        type="number"
+                        placeholder="0"
+                        value={r.weight}
+                        onChange={e => handleChange(i,'weight',e.target.value)}
+                      />
+                    </td>
+                    <td className="text-center">
+                      <Form.Check
+                        type="checkbox"
+                        checked={r.eu}
+                        onChange={e => handleChange(i,'eu',e.target.checked)}
+                      />
+                    </td>
+                    <td>
+                      <Form.Control
+                        placeholder="State-code"
+                        value={r.state}
+                        onChange={e => handleChange(i,'state',e.target.value)}
+                      />
+                    </td>
+                    <td className="text-center">
+                      <Button variant="outline-danger" size="sm" onClick={() => removeRow(i)}>
+                        <FaTrash />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </Table>
             <Row className="mt-3">
-              <Col><Button variant="success" onClick={addRow}><FaUpload className="me-1" /> Add Row</Button></Col>
+              <Col>
+                <Button variant="success" onClick={addRow}>
+                  <FaUpload className="me-1" /> Add Row
+                </Button>
+              </Col>
               <Col className="text-end">
                 <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
-                  {loading ? 'Calculating…' : <><FaCalculator className="me-1" /> Calculate</>}
+                  {loading
+                    ? 'Calculating…'
+                    : <><FaCalculator className="me-1" /> Calculate</>}
                 </Button>
               </Col>
             </Row>
@@ -246,7 +325,10 @@ export default function App() {
               <Card.Title>Results</Card.Title>
               <Table striped bordered hover responsive className="mt-3">
                 <thead>
-                  <tr><th>From (Used)</th><th>To (Used)</th><th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th></tr>
+                  <tr>
+                    <th>From (Used)</th><th>To (Used)</th>
+                    <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {results.map((r,i) => (

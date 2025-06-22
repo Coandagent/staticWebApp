@@ -1,3 +1,5 @@
+// api/geoData.js
+
 const fs   = require('fs');
 const path = require('path');
 const { parse } = require('csv-parse/sync');
@@ -8,8 +10,8 @@ const ALLOWED_SEAPORT_TYPES  = ['commercial'];
 
 // In-memory stores
 let cityMap    = {}; // name → [city records]
-let airportMap = {}; // name → airport record
-let seaportMap = {}; // name → seaport record
+let airportMap = {}; // key (name, iata, or icao) → airport record
+let seaportMap = {}; // key (name or UN/LOCODE) → seaport record
 let inited     = false;
 
 function loadData() {
@@ -21,13 +23,12 @@ function loadData() {
     path.join(__dirname, 'data', 'geonames-all-cities-with-a-population-1000.csv'),
     'utf8'
   );
-  const cities = parse(cityCsv, {
+  parse(cityCsv, {
     delimiter: ';',
     columns: true,
     skip_empty_lines: true,
     relax_quotes: true
-  });
-  cities.forEach(r => {
+  }).forEach(r => {
     const [lat, lon] = r['Coordinates'].split(',').map(s => parseFloat(s.trim()));
     const tz         = (r['Timezone'] || '').trim();
     const inEU       = tz.startsWith('Europe/');
@@ -42,38 +43,41 @@ function loadData() {
       });
   });
 
-  // 2) Airports CSV (with scheduled_service, iata & icao)
+  // 2) Airports CSV
   const airportCsv = fs.readFileSync(
     path.join(__dirname, 'data', 'airports.csv'),
     'utf8'
   );
-  const airports = parse(airportCsv, {
+  parse(airportCsv, {
     delimiter: ',',
     columns: true,
     skip_empty_lines: true
-  });
-  airports.forEach(r => {
+  }).forEach(r => {
     const lat             = parseFloat(r.latitude_deg);
     const lon             = parseFloat(r.longitude_deg);
     const inEU            = (r.continent || '').trim() === 'EU';
     const state           = (r.iso_region || '').split('-')[1] || '';
     const type            = (r.type || '').toLowerCase();
     const scheduled       = (r.scheduled_service || '').toLowerCase() === 'yes';
-    const iata            = (r.iata_code   || '').trim();
-    const icao            = (r.icao_code   || '').trim();
-    const code            = iata || icao || '';
-    const nameWithCode    = code ? `${r.name} (${code})` : r.name;
-
-    const rec = {
+    const iata            = (r.iata_code   || '').trim().toUpperCase();
+    const icao            = (r.icao_code   || '').trim().toUpperCase();
+    const nameKey         = r.name.trim().toLowerCase();
+    const rec             = {
       lat,
       lon,
       inEU,
       state,
       type,
       scheduledService: scheduled,
-      usedName: nameWithCode
+      usedName: `${r.name}${iata ? ` (${iata})` : ''}`,
+      iata,
+      icao
     };
-    airportMap[r.name.trim().toLowerCase()] = rec;
+
+    // index by name, iata, and icao
+    airportMap[nameKey] = rec;
+    if (iata) airportMap[iata.toLowerCase()] = rec;
+    if (icao) airportMap[icao.toLowerCase()] = rec;
   });
 
   // 3) Seaports CSV
@@ -81,111 +85,110 @@ function loadData() {
     path.join(__dirname, 'data', 'seaports.csv'),
     'utf8'
   );
-  const seaports = parse(seaportCsv, {
+  parse(seaportCsv, {
     delimiter: ';',
     columns: true,
     skip_empty_lines: true
-  });
-  seaports.forEach(r => {
-    const lat    = parseFloat(r.latitude);
-    const lon    = parseFloat(r.longitude);
-    const inEU   = (r.zone_code || '').trim().startsWith('EU');
-    const rec    = {
+  }).forEach(r => {
+    const lat      = parseFloat(r.latitude);
+    const lon      = parseFloat(r.longitude);
+    const inEU     = (r.zone_code || '').trim().startsWith('EU');
+    const locode   = (r.UNLOCODE || '').trim().toUpperCase();
+    const nameKey  = r.name.trim().toLowerCase();
+    const rec      = {
       lat,
       lon,
       inEU,
       portType: (r.port_type || '').toLowerCase(),
       usedName: r.name
     };
-    seaportMap[r.name.trim().toLowerCase()] = rec;
+
+    // index by name and UN/LOCODE
+    seaportMap[nameKey] = rec;
+    if (locode) seaportMap[locode.toLowerCase()] = rec;
   });
 }
 
 function haversine(a, b) {
   const toRad = v => (v * Math.PI) / 180;
-  const R     = 6371;
+  const R     = 6371; // km
   const dLat  = toRad(b.lat - a.lat);
   const dLon  = toRad(b.lon - a.lon);
-  const x     = Math.sin(dLat/2)**2
-              + Math.cos(toRad(a.lat))
-              * Math.cos(toRad(b.lat))
-              * Math.sin(dLon/2)**2;
+  const x     = Math.sin(dLat/2)**2 +
+                Math.cos(toRad(a.lat)) *
+                Math.cos(toRad(b.lat)) *
+                Math.sin(dLon/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
 /**
- * lookupLocation(cityName, mode, options)
- *  - cityName: e.g. "billund"
- *  - mode:     'road'|'air'|'sea'
- *  - options:  { eu: boolean, state?: string }
+ * lookupLocation(nameOrCode, mode, options)
+ *  - nameOrCode: city name, airport IATA/ICAO code, or seaport UN/LOCODE
+ *  - mode: 'road'|'air'|'sea'
+ *  - options: { eu: boolean, state?: string }
  */
-function lookupLocation(cityName, mode, options) {
+function lookupLocation(nameOrCode, mode, options) {
   loadData();
-
-  const name     = (cityName||'').trim().toLowerCase();
+  const key      = (nameOrCode||'').trim().toLowerCase();
   const euFlag   = !!(options && options.eu);
   const reqState = (options && options.state) || '';
 
-  if (!name) {
-    throw new Error(`Must supply city name`);
+  if (!key) {
+    throw new Error(`Must supply a location name or code`);
   }
 
-  // ROAD MODE
+  // ROAD: cities only
   if (mode === 'road') {
-    const recs = cityMap[name] || [];
-    if (!recs.length) {
-      throw new Error(`Unknown city: "${cityName}"`);
-    }
+    const recs = cityMap[key] || [];
+    if (!recs.length) throw new Error(`Unknown city: "${nameOrCode}"`);
     let cands = recs.filter(r => r.inEU === euFlag && (!reqState || r.state === reqState));
-    if (!cands.length) {
-      cands = recs.filter(r => r.inEU === euFlag);
-    }
-    if (!cands.length) {
-      throw new Error(`No road-mode city for "${cityName}" with eu=${euFlag}`);
-    }
+    if (!cands.length) cands = recs.filter(r => r.inEU === euFlag);
+    if (!cands.length) throw new Error(`No road-mode city for "${nameOrCode}" with eu=${euFlag}`);
     return cands[0];
   }
 
-  // AIR / SEA MODES
-  let facilities = [];
+  // AIR: direct code or nearest
   if (mode === 'air') {
-    facilities = Object.values(airportMap).filter(r =>
+    if (airportMap[key]) return airportMap[key];
+    const facilities = Object.values(airportMap).filter(r =>
       r.inEU === euFlag &&
       ALLOWED_AIRPORT_TYPES.includes(r.type) &&
       r.scheduledService &&
       (!reqState || r.state === reqState)
     );
-    if (!facilities.length && reqState) {
-      facilities = Object.values(airportMap).filter(r =>
-        r.inEU === euFlag &&
-        ALLOWED_AIRPORT_TYPES.includes(r.type) &&
-        r.scheduledService
-      );
-    }
-  } else if (mode === 'sea') {
-    facilities = Object.values(seaportMap).filter(r =>
+    if (!facilities.length) throw new Error(`No commercial airports for eu=${euFlag}`);
+    // find nearest to city reference
+    const refRecs = cityMap[key] || [];
+    if (!refRecs.length) throw new Error(`Cannot locate reference city: "${nameOrCode}"`);
+    const ref = refRecs[0];
+    let best, bestD = Infinity;
+    facilities.forEach(f => {
+      const d = haversine(ref, f);
+      if (d < bestD) { bestD = d; best = f; }
+    });
+    return best;
+  }
+
+  // SEA: code or nearest
+  if (mode === 'sea') {
+    if (seaportMap[key]) return seaportMap[key];
+    const facilities = Object.values(seaportMap).filter(r =>
       r.inEU === euFlag &&
       ALLOWED_SEAPORT_TYPES.includes(r.portType)
     );
-  } else {
-    throw new Error(`Unsupported mode: ${mode}`);
+    if (!facilities.length) throw new Error(`No commercial seaports for eu=${euFlag}`);
+    const refRecs = cityMap[key] || [];
+    if (!refRecs.length) throw new Error(`Cannot locate reference city: "${nameOrCode}"`);
+    const ref = refRecs[0];
+    let best, bestD = Infinity;
+    facilities.forEach(f => {
+      const d = haversine(ref, f);
+      if (d < bestD) { bestD = d; best = f; }
+    });
+    return best;
   }
 
-  if (!facilities.length) {
-    throw new Error(`No ${mode} facilities for eu=${euFlag}${reqState?`, state=${reqState}`:''}`);
-  }
-
-  // nearest‐neighbor from the first city record
-  const ref = (cityMap[name]||[])[0];
-  let best   = facilities[0], bestD = Infinity;
-  facilities.forEach(r => {
-    const d = haversine(ref, r);
-    if (d < bestD) {
-      bestD = d;
-      best  = r;
-    }
-  });
-  return best;
+  throw new Error(`Unsupported mode: ${mode}`);
 }
 
 module.exports = { loadData, lookupLocation, haversine };
