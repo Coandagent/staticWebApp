@@ -269,7 +269,7 @@ Paris,Berlin,air,10,yes,de
       const blob  = new Blob([wbout],{type:'application/octet-stream'});
       const a     = document.createElement('a');
       a.href      = URL.createObjectURL(blob);
-      a.download  = `co2-results.${format}`;
+      a.download  = co2-results.${format};
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
