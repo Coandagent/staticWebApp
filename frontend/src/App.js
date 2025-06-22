@@ -75,7 +75,7 @@ function buildPdfHtml(results) {
   </table>
   <footer>© ${new Date().getFullYear()} Coandagent · All rights reserved</footer>
 </body>
-</html>`;
+</html>;
 }
 
 export default function App() {
