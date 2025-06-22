@@ -58,7 +58,7 @@ export default function App() {
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast]             = useState({ show:false, message:null });
 
-  // showToast now accepts string or JSX
+  // now accepts string or JSX in the toast body
   const showToast = message => {
     setToast({ show:true, message });
     setTimeout(() => setToast({ show:false, message:null }), 4000);
@@ -135,13 +135,13 @@ export default function App() {
       let parsed = [];
       const text = evt.target.result;
 
-      // parse Excel
+      // Excel
       if (/\.(xlsx|xls)$/i.test(file.name)) {
         const data = new Uint8Array(evt.target.result);
         const wb   = XLSX.read(data,{ type:'array' });
         parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{ defval:'' });
       }
-      // parse CSV
+      // CSV
       else if (/\.csv$/i.test(file.name)) {
         try {
           const lines = text.trim().split('\n');
@@ -166,7 +166,7 @@ Paris,Berlin,air,10,yes,de
           return;
         }
       }
-      // parse JSON
+      // JSON
       else {
         try {
           parsed = JSON.parse(text);
@@ -195,7 +195,7 @@ Paris,Berlin,air,10,yes,de
         }
       }
 
-      // validate columns + detailed error toast
+      // Column validation
       try {
         validateUploadColumns(parsed);
       } catch(err) {
@@ -231,7 +231,7 @@ Paris,Berlin,air,10,yes,de`;
         return;
       }
 
-      // map & calculate
+      // Map & API call
       const payload = parsed.map(r=>({
         from_location: r.from_location||r.from||r.origin,
         to_location:   r.to_location  ||r.to  ||r.destination,
@@ -454,8 +454,8 @@ Paris,Berlin,air,10,yes,de`;
               <Col xs={12} sm="auto" className="ms-sm-auto">
                 <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
                   {loading
-                    ? <> <Spinner animation="border" size="sm" className="me-1" /> Calculating… </>
-                    : <> <FaCalculator className="me-1" /> Calculate </>
+                    ? <><Spinner animation="border" size="sm" className="me-1" /> Calculating…</>
+                    : <><FaCalculator className="me-1" /> Calculate</>
                   }
                 </Button>
               </Col>
