@@ -51,7 +51,6 @@ function validateUploadColumns(data) {
       missing.push(`${key} (aliases: ${aliases.join(', ')})`);
     }
   }
-
   const allAliases = Object.values(mapping).flat();
   headers.forEach(h => {
     if (!allAliases.includes(h)) extra.push(h);
@@ -72,7 +71,6 @@ function validateUploadColumns(data) {
   return true;
 }
 
-// --- helper to generate format-specific examples ---
 function exampleSnippet(ext) {
   switch (ext) {
     case 'csv':
@@ -101,7 +99,9 @@ function exampleSnippet(ext) {
 }
 
 export default function App() {
-  const [rows, setRows]             = useState([{ from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
+  const [rows, setRows]             = useState([
+    { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }
+  ]);
   const [results, setResults]       = useState([]);
   const [format, setFormat]         = useState('pdf');
   const [loading, setLoading]       = useState(false);
@@ -119,7 +119,6 @@ export default function App() {
     u[idx].error   = '';
     setRows(u);
   };
-
   const addRow = () =>
     setRows([...rows, { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
   const removeRow = idx =>
@@ -177,9 +176,9 @@ export default function App() {
     const file = e.target.files[0];
     if (!file) return;
     setFileLoading(true);
-
     const ext = file.name.split('.').pop().toLowerCase();
     const reader = new FileReader();
+
     reader.onload = async evt => {
       let parsed = [];
       try {
@@ -334,71 +333,144 @@ export default function App() {
         <Card className="shadow-sm mb-4">
           <Card.Body>
             <Card.Title>Transport CO₂ Calculator</Card.Title>
-            <Table bordered responsive className="align-middle">
-              <thead className="table-light">
-                <tr>
-                  <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
-                  <th>EU</th><th>State</th><th>Error</th><th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r,i) =>
-                  <tr key={i} className={r.error ? 'table-danger' : ''}>
-                    <td>
-                      <Form.Control
-                        placeholder="City or Code"
-                        value={r.from}
-                        onChange={e=>handleChange(i,'from',e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <Form.Control
-                        placeholder="City or Code"
-                        value={r.to}
-                        onChange={e=>handleChange(i,'to',e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <Form.Select value={r.mode}
-                                   onChange={e=>handleChange(i,'mode',e.target.value)}>
-                        <option value="road">Road</option>
-                        <option value="air">Air</option>
-                        <option value="sea">Sea</option>
-                      </Form.Select>
-                    </td>
-                    <td>
-                      <Form.Control type="number" placeholder="0"
-                                    value={r.weight}
-                                    onChange={e=>handleChange(i,'weight',e.target.value)} />
-                    </td>
-                    <td className="text-center">
-                      <Form.Check type="checkbox"
-                                  checked={r.eu}
-                                  onChange={e=>handleChange(i,'eu',e.target.checked)} />
-                    </td>
-                    <td>
-                      <Form.Control placeholder="State-code"
-                                    value={r.state}
-                                    onChange={e=>handleChange(i,'state',e.target.value)} />
-                    </td>
-                    <td>
-                      {r.error && (
-                        <Badge bg="danger">
-                          <FaExclamationCircle className="me-1"/>
-                          {r.error}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="text-center">
+
+            {/* Desktop: table layout */}
+            <div className="d-none d-md-block">
+              <Table bordered responsive className="align-middle">
+                <thead className="table-light">
+                  <tr>
+                    <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
+                    <th>EU</th><th>State</th><th>Error</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r,i) =>
+                    <tr key={i} className={r.error ? 'table-danger' : ''}>
+                      <td>
+                        <Form.Control
+                          placeholder="City or Code"
+                          value={r.from}
+                          onChange={e=>handleChange(i,'from',e.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <Form.Control
+                          placeholder="City or Code"
+                          value={r.to}
+                          onChange={e=>handleChange(i,'to',e.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <Form.Select value={r.mode}
+                                     onChange={e=>handleChange(i,'mode',e.target.value)}>
+                          <option value="road">Road</option>
+                          <option value="air">Air</option>
+                          <option value="sea">Sea</option>
+                        </Form.Select>
+                      </td>
+                      <td>
+                        <Form.Control type="number" placeholder="0"
+                                      value={r.weight}
+                                      onChange={e=>handleChange(i,'weight',e.target.value)} />
+                      </td>
+                      <td className="text-center">
+                        <Form.Check type="checkbox"
+                                    checked={r.eu}
+                                    onChange={e=>handleChange(i,'eu',e.target.checked)} />
+                      </td>
+                      <td>
+                        <Form.Control placeholder="State-code"
+                                      value={r.state}
+                                      onChange={e=>handleChange(i,'state',e.target.value)} />
+                      </td>
+                      <td>
+                        {r.error && (
+                          <Badge bg="danger">
+                            <FaExclamationCircle className="me-1"/>
+                            {r.error}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="text-center">
+                        <Button variant="outline-danger" size="sm"
+                                onClick={()=>removeRow(i)}>
+                          <FaTrash/>
+                        </Button>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </div>
+
+            {/* Mobile: stacked layout */}
+            <div className="d-block d-md-none">
+              {rows.map((r,i) =>
+                <Card key={i} className="mb-3">
+                  <Card.Body>
+                    <Row className="mb-2">
+                      <Col xs={12} className="mb-2">
+                        <Form.Label>From</Form.Label>
+                        <Form.Control
+                          placeholder="City or Code"
+                          value={r.from}
+                          onChange={e=>handleChange(i,'from',e.target.value)}
+                        />
+                      </Col>
+                      <Col xs={12}>
+                        <Form.Label>To</Form.Label>
+                        <Form.Control
+                          placeholder="City or Code"
+                          value={r.to}
+                          onChange={e=>handleChange(i,'to',e.target.value)}
+                        />
+                      </Col>
+                    </Row>
+                    <Row className="mb-2">
+                      <Col xs={6}>
+                        <Form.Label>Mode</Form.Label>
+                        <Form.Select value={r.mode}
+                                     onChange={e=>handleChange(i,'mode',e.target.value)}>
+                          <option value="road">Road</option>
+                          <option value="air">Air</option>
+                          <option value="sea">Sea</option>
+                        </Form.Select>
+                      </Col>
+                      <Col xs={6}>
+                        <Form.Label>Weight (kg)</Form.Label>
+                        <Form.Control type="number" placeholder="0"
+                                      value={r.weight}
+                                      onChange={e=>handleChange(i,'weight',e.target.value)} />
+                      </Col>
+                    </Row>
+                    <Row className="mb-2 align-items-center">
+                      <Col xs="auto">
+                        <Form.Check label="EU"
+                                    checked={r.eu}
+                                    onChange={e=>handleChange(i,'eu',e.target.checked)} />
+                      </Col>
+                      <Col>
+                        <Form.Label>State</Form.Label>
+                        <Form.Control placeholder="State-code"
+                                      value={r.state}
+                                      onChange={e=>handleChange(i,'state',e.target.value)} />
+                      </Col>
+                    </Row>
+                    {r.error && (
+                      <Badge bg="danger" className="mb-2">
+                        <FaExclamationCircle className="me-1"/> {r.error}
+                      </Badge>
+                    )}
+                    <div>
                       <Button variant="outline-danger" size="sm"
                               onClick={()=>removeRow(i)}>
-                        <FaTrash/>
+                        <FaTrash className="me-1"/> Remove
                       </Button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </Table>
+                    </div>
+                  </Card.Body>
+                </Card>
+              )}
+            </div>
 
             <Row className="mt-3">
               <Col xs={12} sm="auto" className="mb-2">
