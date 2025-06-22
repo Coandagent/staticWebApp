@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import './App.css';
 import {
   Container,
   Navbar,
@@ -32,18 +33,18 @@ function validateUploadColumns(data) {
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error('File is empty or invalid JSON/CSV/Excel');
   }
-  const got = Object.keys(data[0]).map(k => k.trim().toLowerCase());
-  const want = ['from_location','to_location','mode','weight_kg','eu','state'];
+  const got   = Object.keys(data[0]).map(k => k.trim().toLowerCase());
+  const want  = ['from_location','to_location','mode','weight_kg','eu','state'];
   const missing = want.filter(k => !got.includes(k));
   const extra   = got.filter(k => !want.includes(k));
   if (missing.length || extra.length) {
     const parts = [];
-    if (missing.length) parts.push(`missing columns: ${missing.join(', ')}`);
-    if (extra.length)   parts.push(`unexpected columns: ${extra.join(', ')}`);
+    if (missing.length) parts.push(`Missing columns: ${missing.join(', ')}`);
+    if (extra.length)   parts.push(`Unexpected columns: ${extra.join(', ')}`);
     parts.push(
       'Expected headers: ' +
       want.map(h => `"${h}"`).join(', ') +
-      `. Example row: {"from_location":"Paris","to_location":"Berlin","mode":"air","weight_kg":10,"eu":true,"state":"de"}`
+      '.'
     );
     throw new Error(parts.join('; '));
   }
@@ -55,11 +56,12 @@ export default function App() {
   const [format, setFormat]           = useState('pdf');
   const [loading, setLoading]         = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
-  const [toast, setToast]             = useState({ show:false, message:'' });
+  const [toast, setToast]             = useState({ show:false, message:null });
 
+  // now accepts string or JSX
   const showToast = message => {
     setToast({ show:true, message });
-    setTimeout(() => setToast({ show:false, message:'' }), 4000);
+    setTimeout(() => setToast({ show:false, message:null }), 4000);
   };
 
   const handleChange = (idx, field, value) => {
@@ -125,6 +127,7 @@ export default function App() {
   const handleFileUpload = e => {
     const file = e.target.files[0];
     if (!file) return;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
     setFileLoading(true);
 
     const reader = new FileReader();
@@ -140,19 +143,52 @@ export default function App() {
       }
       // parse CSV
       else if (/\.csv$/i.test(file.name)) {
-        const lines = text.trim().split('\n');
-        const keys  = lines[0].split(',').map(h=>h.trim());
-        parsed = lines.slice(1).map(row=>{
-          const vals = row.split(',').map(v=>v.trim());
-          return Object.fromEntries(keys.map((k,i)=>[k,vals[i]]));
-        });
+        try {
+          const lines = text.trim().split('\n');
+          const keys  = lines[0].split(',').map(h=>h.trim());
+          parsed = lines.slice(1).map(row=>{
+            const vals = row.split(',').map(v=>v.trim());
+            return Object.fromEntries(keys.map((k,i)=>[k,vals[i]]));
+          });
+        } catch {
+          showToast(
+            <div>
+              <p><strong>Upload error:</strong> Could not parse CSV.</p>
+              <p><strong>Example CSV format:</strong></p>
+              <pre style={{ whiteSpace:'pre-wrap' }}>
+from_location,to_location,mode,weight_kg,eu,state
+Paris,Berlin,air,10,yes,de
+              </pre>
+            </div>
+          );
+          setFileLoading(false);
+          e.target.value = '';
+          return;
+        }
       }
       // parse JSON
       else {
         try {
           parsed = JSON.parse(text);
         } catch {
-          showToast('Upload error: invalid JSON');
+          showToast(
+            <div>
+              <p><strong>Upload error:</strong> Invalid JSON.</p>
+              <p><strong>Example JSON format:</strong></p>
+              <pre style={{ whiteSpace:'pre-wrap' }}>
+[  
+  {  
+    "from_location":"Paris",  
+    "to_location":"Berlin",  
+    "mode":"air",  
+    "weight_kg":10,  
+    "eu":true,  
+    "state":"de"  
+  }  
+]
+              </pre>
+            </div>
+          );
           setFileLoading(false);
           e.target.value = '';
           return;
@@ -163,7 +199,33 @@ export default function App() {
       try {
         validateUploadColumns(parsed);
       } catch(err) {
-        showToast(`Upload error: ${err.message}`);
+        let exampleSnippet = '';
+        if (ext === 'csv') {
+          exampleSnippet = `from_location,to_location,mode,weight_kg,eu,state
+Paris,Berlin,air,10,yes,de`;
+        } else if (ext === 'json') {
+          exampleSnippet = `[
+  {
+    "from_location":"Paris",
+    "to_location":"Berlin",
+    "mode":"air",
+    "weight_kg":10,
+    "eu":true,
+    "state":"de"
+  }
+]`;
+        } else {
+          exampleSnippet = `from_location,to_location,mode,weight_kg,eu,state
+Paris,Berlin,air,10,yes,de`;
+        }
+        showToast(
+          <div>
+            <p><strong>Upload error:</strong> {err.message}</p>
+            <p><strong>Expected columns:</strong> from_location, to_location, mode, weight_kg, eu, state</p>
+            <p><strong>Example {ext.toUpperCase()} format:</strong></p>
+            <pre style={{ whiteSpace:'pre-wrap' }}>{exampleSnippet}</pre>
+          </div>
+        );
         setFileLoading(false);
         e.target.value = '';
         return;
@@ -191,21 +253,21 @@ export default function App() {
       showToast('No results to download');
       return;
     }
-    if (format==='csv'||format==='xlsx') {
+    if (format==='csv' || format==='xlsx') {
       const wsData = [
         ['From','Used From','To','Used To','Mode','Distance (km)','CO₂ (kg)','Error'],
         ...results.map(r=>[
-          r.from_input,r.from_used,
-          r.to_input,  r.to_used,
-          r.mode,      r.distance_km,
-          r.co2_kg,    r.error||''
+          r.from_input, r.from_used,
+          r.to_input,   r.to_used,
+          r.mode,       r.distance_km,
+          r.co2_kg,     r.error||''
         ]),
       ];
       const ws    = XLSX.utils.aoa_to_sheet(wsData);
       const wb    = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb,ws,'Results');
-      const wbout = XLSX.write(wb,{bookType:format,type:'array'});
-      const blob  = new Blob([wbout],{type:'application/octet-stream'});
+      XLSX.utils.book_append_sheet(wb, ws, 'Results');
+      const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
+      const blob  = new Blob([wbout], { type: 'application/octet-stream' });
       const a     = document.createElement('a');
       a.href      = URL.createObjectURL(blob);
       a.download  = `co2-results.${format}`;
@@ -213,7 +275,7 @@ export default function App() {
       a.click();
       document.body.removeChild(a);
     } else {
-      const win = window.open('','_blank');
+      const win = window.open('', '_blank');
       win.document.write(`
 <!DOCTYPE html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
 <style>
@@ -225,7 +287,7 @@ export default function App() {
   table{width:100%;border-collapse:collapse;margin-top:20px}
   th{background:#004080;color:#fff;padding:10px;text-align:left}
   td{border:1px solid #ddd;padding:8px}
-  footer{margin-top:40px;font-size:12px;text-align:center;color:#888}
+  footer{margin-top:40px;font-size:12px;text-align:center;color:#888'}
 </style></head><body>
   <div class="watermark">Coandagent</div>
   <header><h1>CO₂ Transport Report</h1>
@@ -261,10 +323,12 @@ export default function App() {
               accept=".csv,.json,.xlsx,.xls"
               onChange={handleFileUpload}
               id="file-upload"
-              style={{display:'none'}}
+              style={{ display: 'none' }}
             />
             <Button as="label" htmlFor="file-upload" variant="outline-primary" className="m-1">
-              {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>}
+              {fileLoading
+                ? <Spinner animation="border" size="sm" />
+                : <FaUpload className="me-1" />}
               Upload File
             </Button>
             <Dropdown onSelect={setFormat} className="m-1">
@@ -272,13 +336,13 @@ export default function App() {
                 Format: {format.toUpperCase()}
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                {['pdf','xlsx','csv'].map(f=>
+                {['pdf','xlsx','csv'].map(f =>
                   <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
                 )}
               </Dropdown.Menu>
             </Dropdown>
             <Button variant="primary" onClick={downloadReport} className="m-1">
-              <FaDownload/> Download Report
+              <FaDownload /> Download Report
             </Button>
           </Nav>
         </Container>
@@ -288,7 +352,7 @@ export default function App() {
         <Card className="shadow-sm mb-4">
           <Card.Body>
             <Card.Title>Transport CO₂ Calculator</Card.Title>
-            <Table bordered responsive className="align-middle">
+            <Table bordered responsive className="align-middle responsive-table">
               <thead className="table-light">
                 <tr>
                   <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
@@ -296,34 +360,64 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r,i)=>
-                  <tr key={i} className={r.error?'table-danger':''}>
-                    <td><Form.Control placeholder="City or Code" value={r.from}
-                          onChange={e=>handleChange(i,'from',e.target.value)}/></td>
-                    <td><Form.Control placeholder="City or Code" value={r.to}
-                          onChange={e=>handleChange(i,'to',e.target.value)}/></td>
-                    <td><Form.Select value={r.mode}
-                          onChange={e=>handleChange(i,'mode',e.target.value)}>
-                      <option value="road">Road</option>
-                      <option value="air">Air</option>
-                      <option value="sea">Sea</option>
-                    </Form.Select></td>
-                    <td><Form.Control type="number" placeholder="0" value={r.weight}
-                          onChange={e=>handleChange(i,'weight',e.target.value)}/></td>
-                    <td className="text-center"><Form.Check type="checkbox" checked={r.eu}
-                          onChange={e=>handleChange(i,'eu',e.target.checked)}/></td>
-                    <td><Form.Control placeholder="State-code" value={r.state}
-                          onChange={e=>handleChange(i,'state',e.target.value)}/></td>
-                    <td>
+                {rows.map((r, i) =>
+                  <tr key={i} className={r.error ? 'table-danger' : ''}>
+                    <td data-label="From">
+                      <Form.Control
+                        placeholder="City or Code"
+                        value={r.from}
+                        onChange={e => handleChange(i, 'from', e.target.value)}
+                      />
+                    </td>
+                    <td data-label="To">
+                      <Form.Control
+                        placeholder="City or Code"
+                        value={r.to}
+                        onChange={e => handleChange(i, 'to', e.target.value)}
+                      />
+                    </td>
+                    <td data-label="Mode">
+                      <Form.Select
+                        value={r.mode}
+                        onChange={e => handleChange(i, 'mode', e.target.value)}
+                      >
+                        <option value="road">Road</option>
+                        <option value="air">Air</option>
+                        <option value="sea">Sea</option>
+                      </Form.Select>
+                    </td>
+                    <td data-label="Weight">
+                      <Form.Control
+                        type="number"
+                        placeholder="0"
+                        value={r.weight}
+                        onChange={e => handleChange(i, 'weight', e.target.value)}
+                      />
+                    </td>
+                    <td data-label="EU" className="text-center">
+                      <Form.Check
+                        type="checkbox"
+                        checked={r.eu}
+                        onChange={e => handleChange(i, 'eu', e.target.checked)}
+                      />
+                    </td>
+                    <td data-label="State">
+                      <Form.Control
+                        placeholder="State-code"
+                        value={r.state}
+                        onChange={e => handleChange(i, 'state', e.target.value)}
+                      />
+                    </td>
+                    <td data-label="Error">
                       {r.error && (
                         <Badge bg="danger">
-                          <FaExclamationCircle className="me-1"/> {r.error}
+                          <FaExclamationCircle className="me-1" /> {r.error}
                         </Badge>
                       )}
                     </td>
-                    <td className="text-center">
-                      <Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}>
-                        <FaTrash/>
+                    <td data-label="">
+                      <Button variant="outline-danger" size="sm" onClick={() => removeRow(i)}>
+                        <FaTrash />
                       </Button>
                     </td>
                   </tr>
@@ -334,14 +428,14 @@ export default function App() {
             <Row className="mt-3">
               <Col xs={12} sm="auto" className="mb-2">
                 <Button variant="success" onClick={addRow}>
-                  <FaUpload className="me-1"/> Add Row
+                  <FaUpload className="me-1" /> Add Row
                 </Button>
               </Col>
               <Col xs={12} sm="auto" className="ms-sm-auto">
                 <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
                   {loading
-                    ? <><Spinner animation="border" size="sm" className="me-1"/> Calculating…</>
-                    : <><FaCalculator className="me-1"/> Calculate</>
+                    ? <><Spinner animation="border" size="sm" className="me-1" /> Calculating…</>
+                    : <><FaCalculator className="me-1" /> Calculate</>
                   }
                 </Button>
               </Col>
@@ -349,11 +443,11 @@ export default function App() {
           </Card.Body>
         </Card>
 
-        {results.length>0 && (
+        {results.length > 0 && (
           <Card className="shadow-sm">
             <Card.Body>
               <Card.Title>Results</Card.Title>
-              <Table striped bordered hover responsive className="mt-3">
+              <Table striped bordered hover responsive className="mt-3 responsive-table">
                 <thead>
                   <tr>
                     <th>From (Used)</th><th>To (Used)</th><th>Mode</th>
@@ -361,16 +455,21 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r,i)=>
-                    <tr key={i} className={r.error?'table-danger':''}>
-                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
-                      <td>{r.to_input}   <small className="text-muted">({r.to_used})</small></td>
-                      <td className="text-capitalize">{r.mode}</td>
-                      <td>{r.distance_km}</td><td>{r.co2_kg}</td>
-                      <td>
+                  {results.map((r, i) =>
+                    <tr key={i} className={r.error ? 'table-danger' : ''}>
+                      <td data-label="From (Used)">
+                        {r.from_input} <small className="text-muted">({r.from_used})</small>
+                      </td>
+                      <td data-label="To (Used)">
+                        {r.to_input} <small className="text-muted">({r.to_used})</small>
+                      </td>
+                      <td data-label="Mode" className="text-capitalize">{r.mode}</td>
+                      <td data-label="Distance">{r.distance_km}</td>
+                      <td data-label="CO₂">{r.co2_kg}</td>
+                      <td data-label="Error">
                         {r.error && (
                           <Badge bg="danger">
-                            <FaExclamationCircle className="me-1"/> {r.error}
+                            <FaExclamationCircle className="me-1" /> {r.error}
                           </Badge>
                         )}
                       </td>
@@ -387,12 +486,12 @@ export default function App() {
         <Toast
           bg="warning"
           show={toast.show}
-          onClose={()=>setToast({show:false,message:''})}
+          onClose={() => setToast({ show:false, message:null })}
           delay={4000}
           autohide
         >
           <Toast.Header>
-            <FaExclamationCircle className="me-2 text-danger"/>
+            <FaExclamationCircle className="me-2 text-danger" />
             <strong className="me-auto">Error</strong>
           </Toast.Header>
           <Toast.Body>{toast.message}</Toast.Body>
