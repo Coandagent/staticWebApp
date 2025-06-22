@@ -58,7 +58,7 @@ export default function App() {
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast]             = useState({ show:false, message:null });
 
-  // now accepts string or JSX
+  // showToast now accepts string or JSX
   const showToast = message => {
     setToast({ show:true, message });
     setTimeout(() => setToast({ show:false, message:null }), 4000);
@@ -277,33 +277,53 @@ Paris,Berlin,air,10,yes,de`;
     } else {
       const win = window.open('', '_blank');
       win.document.write(`
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CO₂ Report</title>
 <style>
-  body{font-family:'Segoe UI',sans-serif;margin:40px;position:relative}
-  .watermark{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:120px;color:rgba(0,64,128,0.08);user-select:none}
-  header{text-align:center;margin-bottom:40px}
-  header h1{color:#004080;font-size:28px;margin:0}
-  table{width:100%;border-collapse:collapse;margin-top:20px}
-  th{background:#004080;color:#fff;padding:10px;text-align:left}
-  td{border:1px solid #ddd;padding:8px}
-  footer{margin-top:40px;font-size:12px;text-align:center;color:#888;}
-</style></head><body>
+  body { font-family: 'Segoe UI', sans-serif; margin:40px; position:relative; }
+  .watermark {
+    position:absolute; top:30%; left:50%;
+    transform:translate(-50%,-50%) rotate(-30deg);
+    font-size:120px; color:rgba(0,64,128,0.08); user-select:none;
+  }
+  header { text-align:center; margin-bottom:40px; }
+  header h1 { color:#004080; font-size:28px; margin:0; }
+  table { width:100%; border-collapse:collapse; margin-top:20px; }
+  th { background:#004080; color:#fff; padding:10px; text-align:left; }
+  td { border:1px solid #ddd; padding:8px; }
+  footer { margin-top:40px; font-size:12px; text-align:center; color:#888; }
+</style>
+</head>
+<body>
   <div class="watermark">Coandagent</div>
-  <header><h1>CO₂ Transport Report</h1><p>${new Date().toLocaleDateString()}</p></header>
-  <table><thead><tr>
-    <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
-    <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
-  </tr></thead><tbody>
-  ${results.map(r=>`
-    <tr>
-      <td>${r.from_input}</td><td>${r.from_used}</td>
-      <td>${r.to_input}</td><td>${r.to_used}</td>
-      <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
-      <td>${r.error||''}</td>
-    </tr>`).join('')}
-  </tbody></table>
+  <header>
+    <h1>CO₂ Transport Report</h1>
+    <p>${new Date().toLocaleDateString()}</p>
+  </header>
+  <table>
+    <thead>
+      <tr>
+        <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
+        <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${results.map(r => `
+        <tr>
+          <td>${r.from_input}</td><td>${r.from_used}</td>
+          <td>${r.to_input}</td><td>${r.to_used}</td>
+          <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
+          <td>${r.error||''}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
   <footer>© ${new Date().getFullYear()} Coandagent · All rights reserved</footer>
-</body></html>`);
+</body>
+</html>`);
       win.document.close();
       win.focus();
       win.print();
@@ -335,7 +355,9 @@ Paris,Berlin,air,10,yes,de`;
               </Dropdown.Toggle>
               <Dropdown.Menu>
                 {['pdf','xlsx','csv'].map(f =>
-                  <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
+                  <Dropdown.Item key={f} eventKey={f}>
+                    {f.toUpperCase()}
+                  </Dropdown.Item>
                 )}
               </Dropdown.Menu>
             </Dropdown>
@@ -355,10 +377,10 @@ Paris,Berlin,air,10,yes,de`;
                 <tr>
                   <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
                   <th>EU</th><th>State</th><th>Error</th><th></th>
-                </tr>  
+                </tr>
               </thead>
               <tbody>
-                {rows.map((r, i) =>
+                {rows.map((r, i) => (
                   <tr key={i} className={r.error ? 'table-danger' : ''}>
                     <td data-label="From">
                       <Form.Control
@@ -419,7 +441,7 @@ Paris,Berlin,air,10,yes,de`;
                       </Button>
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </Table>
 
@@ -432,8 +454,8 @@ Paris,Berlin,air,10,yes,de`;
               <Col xs={12} sm="auto" className="ms-sm-auto">
                 <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
                   {loading
-                    ? <><Spinner animation="border" size="sm" className="me-1" /> Calculating…</>
-                    : <><FaCalculator className="me-1" /> Calculate</>
+                    ? <> <Spinner animation="border" size="sm" className="me-1" /> Calculating… </>
+                    : <> <FaCalculator className="me-1" /> Calculate </>
                   }
                 </Button>
               </Col>
@@ -453,7 +475,7 @@ Paris,Berlin,air,10,yes,de`;
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r, i) =>
+                  {results.map((r, i) => (
                     <tr key={i} className={r.error ? 'table-danger' : ''}>
                       <td data-label="From (Used)">
                         {r.from_input} <small className="text-muted">({r.from_used})</small>
@@ -472,7 +494,7 @@ Paris,Berlin,air,10,yes,de`;
                         )}
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </Table>
             </Card.Body>
