@@ -47,8 +47,7 @@ function validateUploadColumns(data) {
 }
 
 // --- PDF export helper ---
-const buildPdfHtml = (results) => `
-<!DOCTYPE html>
+const buildPdfHtml = (results) => `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -94,8 +93,7 @@ const buildPdfHtml = (results) => `
   </table>
   <footer>© ${new Date().getFullYear()} Coandagent · All rights reserved</footer>
 </body>
-</html>
-`;
+</html>`;
 
 export default function App() {
   const [rows, setRows]               = useState([{ from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
@@ -105,7 +103,7 @@ export default function App() {
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast]             = useState({ show:false, message:null });
 
-  // accept HTML/JSX in toasts
+  // accept JSX/text in toasts
   const showToast = message => {
     setToast({ show:true, message });
     setTimeout(() => setToast({ show:false, message:null }), 4000);
@@ -286,13 +284,13 @@ Paris,Berlin,air,10,yes,de
           r.from_input, r.from_used,
           r.to_input,   r.to_used,
           r.mode,       r.distance_km,
-          r.co2_kg,     r.error||''
+          r.co2_kg,     r.error||''  
         ]),
       ];
       const ws    = XLSX.utils.aoa_to_sheet(wsData);
       const wb    = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Results');
-      const wbout = XLSX.write(wb,{ bookType: format, type:'array' });
+      const wbout = XLSX.write(wb,{ bookType:format, type:'array' });
       const blob  = new Blob([wbout],{ type:'application/octet-stream' });
       const a     = document.createElement('a');
       a.href      = URL.createObjectURL(blob);
@@ -323,7 +321,9 @@ Paris,Berlin,air,10,yes,de
               style={{display:'none'}}
             />
             <Button as="label" htmlFor="file-upload" variant="outline-primary" className="m-1">
-              {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>}
+              {fileLoading
+                ? <Spinner animation="border" size="sm"/>
+                : <FaUpload className="me-1"/>}
               Upload File
             </Button>
             <Dropdown onSelect={setFormat} className="m-1">
@@ -357,44 +357,24 @@ Paris,Berlin,air,10,yes,de
               <tbody>
                 {rows.map((r,i)=>
                   <tr key={i} className={r.error?'table-danger':''}>
-                    <td data-label="From">
-                      <Form.Control placeholder="City or Code" value={r.from}
-                        onChange={e=>handleChange(i,'from',e.target.value)}/>
-                    </td>
-                    <td data-label="To">
-                      <Form.Control placeholder="City or Code" value={r.to}
-                        onChange={e=>handleChange(i,'to',e.target.value)}/>
-                    </td>
-                    <td data-label="Mode">
-                      <Form.Select value={r.mode}
-                        onChange={e=>handleChange(i,'mode',e.target.value)}>
-                        <option value="road">Road</option>
-                        <option value="air">Air</option>
-                        <option value="sea">Sea</option>
-                      </Form.Select>
-                    </td>
-                    <td data-label="Weight">
-                      <Form.Control type="number" placeholder="0" value={r.weight}
-                        onChange={e=>handleChange(i,'weight',e.target.value)}/>
-                    </td>
-                    <td data-label="EU" className="text-center">
-                      <Form.Check type="checkbox" checked={r.eu}
-                        onChange={e=>handleChange(i,'eu',e.target.checked)}/>
-                    </td>
-                    <td data-label="State">
-                      <Form.Control placeholder="State-code" value={r.state}
-                        onChange={e=>handleChange(i,'state',e.target.value)}/>
-                    </td>
-                    <td data-label="Error">
-                      {r.error && (
-                        <Badge bg="danger"><FaExclamationCircle className="me-1"/> {r.error}</Badge>
-                      )}
-                    </td>
-                    <td data-label="">
-                      <Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}>
-                        <FaTrash/>
-                      </Button>
-                    </td>
+                    <td data-label="From"><Form.Control placeholder="City or Code" value={r.from}
+                      onChange={e=>handleChange(i,'from',e.target.value)}/></td>
+                    <td data-label="To"><Form.Control placeholder="City or Code" value={r.to}
+                      onChange={e=>handleChange(i,'to',e.target.value)}/></td>
+                    <td data-label="Mode"><Form.Select value={r.mode}
+                      onChange={e=>handleChange(i,'mode',e.target.value)}>
+                      <option value="road">Road</option>
+                      <option value="air">Air</option>
+                      <option value="sea">Sea</option>
+                    </Form.Select></td>
+                    <td data-label="Weight"><Form.Control type="number" placeholder="0" value={r.weight}
+                      onChange={e=>handleChange(i,'weight',e.target.value)}/></td>
+                    <td data-label="EU" className="text-center"><Form.Check type="checkbox" checked={r.eu}
+                      onChange={e=>handleChange(i,'eu',e.target.checked)}/></td>
+                    <td data-label="State"><Form.Control placeholder="State-code" value={r.state}
+                      onChange={e=>handleChange(i,'state',e.target.value)}/></td>
+                    <td data-label="Error">{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/> {r.error}</Badge>}</td>
+                    <td data-label=""><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash/></Button></td>
                   </tr>
                 )}
               </tbody>
@@ -402,13 +382,11 @@ Paris,Berlin,air,10,yes,de
 
             <Row className="mt-3">
               <Col xs={12} sm="auto" className="mb-2">
-                <Button variant="success" onClick={addRow}>
-                  <FaUpload className="me-1"/> Add Row
-                </Button>
+                <Button variant="success" onClick={addRow}><FaUpload className="me-1"/> Add Row</Button>
               </Col>
               <Col xs={12} sm="auto" className="ms-sm-auto">
                 <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
-                  {loading
+                  {loading 
                     ? <><Spinner animation="border" size="sm" className="me-1"/> Calculating…</>
                     : <><FaCalculator className="me-1"/> Calculate</>
                   }
@@ -432,20 +410,12 @@ Paris,Berlin,air,10,yes,de
                 <tbody>
                   {results.map((r,i)=>
                     <tr key={i} className={r.error?'table-danger':''}>
-                      <td data-label="From (Used)">
-                        {r.from_input} <small className="text-muted">({r.from_used})</small>
-                      </td>
-                      <td data-label="To (Used)">
-                        {r.to_input} <small className="text-muted">({r.to_used})</small>
-                      </td>
+                      <td data-label="From (Used)">{r.from_input} <small className="text-muted">({r.from_used})</small></td>
+                      <td data-label="To (Used)">{r.to_input} <small className="text-muted">({r.to_used})</small></td>
                       <td data-label="Mode" className="text-capitalize">{r.mode}</td>
                       <td data-label="Distance">{r.distance_km}</td>
                       <td data-label="CO₂">{r.co2_kg}</td>
-                      <td data-label="Error">
-                        {r.error && (
-                          <Badge bg="danger"><FaExclamationCircle className="me-1"/> {r.error}</Badge>
-                        )}
-                      </td>
+                      <td data-label="Error">{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/> {r.error}</Badge>}</td>
                     </tr>
                   )}
                 </tbody>
@@ -456,16 +426,9 @@ Paris,Berlin,air,10,yes,de
       </Container>
 
       <ToastContainer position="bottom-end" className="p-3">
-        <Toast
-          bg="warning"
-          show={toast.show}
-          onClose={()=>setToast({ show:false, message:null })}
-          delay={4000}
-          autohide
-        >
+        <Toast bg="warning" show={toast.show} onClose={()=>setToast({ show:false, message:null })} delay={4000} autohide>
           <Toast.Header>
-            <FaExclamationCircle className="me-2 text-danger"/>
-            <strong className="me-auto">Error</strong>
+            <FaExclamationCircle className="me-2 text-danger"/><strong className="me-auto">Error</strong>
           </Toast.Header>
           <Toast.Body>{toast.message}</Toast.Body>
         </Toast>
