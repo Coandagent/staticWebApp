@@ -70,10 +70,7 @@ export default function App() {
   };
 
   const addRow = () =>
-    setRows([
-      ...rows,
-      { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }
-    ]);
+    setRows([...rows, { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
 
   const removeRow = idx =>
     setRows(rows.filter((_,i)=>i!==idx));
@@ -135,18 +132,23 @@ export default function App() {
       let parsed = [];
       const text = evt.target.result;
 
+      // parse Excel
       if (/\.(xlsx|xls)$/i.test(file.name)) {
         const data = new Uint8Array(evt.target.result);
         const wb   = XLSX.read(data,{ type:'array' });
         parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{ defval:'' });
-      } else if (/\.csv$/i.test(file.name)) {
+      }
+      // parse CSV
+      else if (/\.csv$/i.test(file.name)) {
         const lines = text.trim().split('\n');
         const keys  = lines[0].split(',').map(h=>h.trim());
         parsed = lines.slice(1).map(row=>{
           const vals = row.split(',').map(v=>v.trim());
           return Object.fromEntries(keys.map((k,i)=>[k,vals[i]]));
         });
-      } else {
+      }
+      // parse JSON
+      else {
         try {
           parsed = JSON.parse(text);
         } catch {
@@ -157,6 +159,7 @@ export default function App() {
         }
       }
 
+      // validate columns + detailed error toast
       try {
         validateUploadColumns(parsed);
       } catch(err) {
@@ -166,6 +169,7 @@ export default function App() {
         return;
       }
 
+      // map & calculate
       const payload = parsed.map(r=>({
         from_location: r.from_location||r.from||r.origin,
         to_location:   r.to_location  ||r.to  ||r.destination,
@@ -214,7 +218,8 @@ export default function App() {
 <!DOCTYPE html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
 <style>
   body{font-family:'Segoe UI',sans-serif;margin:40px;position:relative}
-  .watermark{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:120px;color:rgba(0,64,128,0.08);user-select:none}
+  .watermark{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);
+             font-size:120px;color:rgba(0,64,128,0.08);user-select:none}
   header{text-align:center;margin-bottom:40px}
   header h1{color:#004080;font-size:28px;margin:0}
   table{width:100%;border-collapse:collapse;margin-top:20px}
@@ -223,7 +228,8 @@ export default function App() {
   footer{margin-top:40px;font-size:12px;text-align:center;color:#888}
 </style></head><body>
   <div class="watermark">Coandagent</div>
-  <header><h1>CO₂ Transport Report</h1><p>${new Date().toLocaleDateString()}</p></header>
+  <header><h1>CO₂ Transport Report</h1>
+    <p>${new Date().toLocaleDateString()}</p></header>
   <table><thead><tr>
     <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
     <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
@@ -292,52 +298,22 @@ export default function App() {
               <tbody>
                 {rows.map((r,i)=>
                   <tr key={i} className={r.error?'table-danger':''}>
-                    <td>
-                      <Form.Control
-                        placeholder="City or Code"
-                        value={r.from}
-                        onChange={e=>handleChange(i,'from',e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <Form.Control
-                        placeholder="City or Code"
-                        value={r.to}
-                        onChange={e=>handleChange(i,'to',e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <Form.Select
-                        value={r.mode}
-                        onChange={e=>handleChange(i,'mode',e.target.value)}
-                      >
-                        <option value="road">Road</option>
-                        <option value="air">Air</option>
-                        <option value="sea">Sea</option>
-                      </Form.Select>
-                    </td>
-                    <td>
-                      <Form.Control
-                        type="number"
-                        placeholder="0"
-                        value={r.weight}
-                        onChange={e=>handleChange(i,'weight',e.target.value)}
-                      />
-                    </td>
-                    <td className="text-center">
-                      <Form.Check
-                        type="checkbox"
-                        checked={r.eu}
-                        onChange={e=>handleChange(i,'eu',e.target.checked)}
-                      />
-                    </td>
-                    <td>
-                      <Form.Control
-                        placeholder="State-code"
-                        value={r.state}
-                        onChange={e=>handleChange(i,'state',e.target.value)}
-                      />
-                    </td>
+                    <td><Form.Control placeholder="City or Code" value={r.from}
+                          onChange={e=>handleChange(i,'from',e.target.value)}/></td>
+                    <td><Form.Control placeholder="City or Code" value={r.to}
+                          onChange={e=>handleChange(i,'to',e.target.value)}/></td>
+                    <td><Form.Select value={r.mode}
+                          onChange={e=>handleChange(i,'mode',e.target.value)}>
+                      <option value="road">Road</option>
+                      <option value="air">Air</option>
+                      <option value="sea">Sea</option>
+                    </Form.Select></td>
+                    <td><Form.Control type="number" placeholder="0" value={r.weight}
+                          onChange={e=>handleChange(i,'weight',e.target.value)}/></td>
+                    <td className="text-center"><Form.Check type="checkbox" checked={r.eu}
+                          onChange={e=>handleChange(i,'eu',e.target.checked)}/></td>
+                    <td><Form.Control placeholder="State-code" value={r.state}
+                          onChange={e=>handleChange(i,'state',e.target.value)}/></td>
                     <td>
                       {r.error && (
                         <Badge bg="danger">
@@ -387,14 +363,8 @@ export default function App() {
                 <tbody>
                   {results.map((r,i)=>
                     <tr key={i} className={r.error?'table-danger':''}>
-                      <td>
-                        {r.from_input}{' '}
-                        <small className="text-muted">({r.from_used})</small>
-                      </td>
-                      <td>
-                        {r.to_input}{' '}
-                        <small className="text-muted">({r.to_used})</small>
-                      </td>
+                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
+                      <td>{r.to_input}   <small className="text-muted">({r.to_used})</small></td>
                       <td className="text-capitalize">{r.mode}</td>
                       <td>{r.distance_km}</td><td>{r.co2_kg}</td>
                       <td>
