@@ -33,7 +33,6 @@ function validateUploadColumns(data) {
     throw new Error('Uploaded file is empty or invalid');
   }
 
-  // canonical → accepted header names
   const mapping = {
     from_location: ['from_location', 'from', 'origin', 'orig'],
     to_location:   ['to_location', 'to', 'destination', 'dest'],
@@ -43,26 +42,22 @@ function validateUploadColumns(data) {
     state:         ['state', 'state_code', 'province', 'region'],
   };
 
-  // normalize incoming headers
   const headers = Object.keys(data[0]).map(h => h.trim().toLowerCase());
-
   const missing = [];
   const extra   = [];
 
-  // check each canonical
   for (const [key, aliases] of Object.entries(mapping)) {
-    const found = aliases.find(a => headers.includes(a));
-    if (!found) missing.push(`${key} (aliases: ${aliases.join(', ')})`);
+    if (!aliases.some(a => headers.includes(a))) {
+      missing.push(`${key} (aliases: ${aliases.join(', ')})`);
+    }
   }
 
-  // any headers that aren't in any alias list?
   const allAliases = Object.values(mapping).flat();
-  for (const h of headers) {
+  headers.forEach(h => {
     if (!allAliases.includes(h)) extra.push(h);
-  }
+  });
 
   if (missing.length || extra.length) {
-    // build multiline message
     let msg = '';
     if (missing.length) {
       msg += '**Missing columns:**\n' + missing.map(m => `• ${m}`).join('\n');
@@ -74,23 +69,48 @@ function validateUploadColumns(data) {
     throw new Error(msg);
   }
 
-  // OK
   return true;
 }
 
+// --- helper to generate format-specific examples ---
+function exampleSnippet(ext) {
+  switch (ext) {
+    case 'csv':
+      return (
+        '**Example CSV format:**\n' +
+        'from_location,to_location,mode,weight_kg,eu,state\n' +
+        'Copenhagen,Berlin,road,100,yes,BE\n'
+      );
+    case 'xlsx':
+    case 'xls':
+      return (
+        '**Example Excel headers (first row):**\n' +
+        'from_location | to_location | mode | weight_kg | eu | state\n' +
+        '(then data rows beneath)\n'
+      );
+    case 'json':
+      return (
+        '**Example JSON format:**\n' +
+        '[\n' +
+        '  { "from_location": "Copenhagen", "to_location": "Berlin", "mode": "road", "weight_kg": 100, "eu": true, "state": "BE" }\n' +
+        ']\n'
+      );
+    default:
+      return '';
+  }
+}
+
 export default function App() {
-  const [rows, setRows]             = useState([
-    { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }
-  ]);
+  const [rows, setRows]             = useState([{ from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
   const [results, setResults]       = useState([]);
   const [format, setFormat]         = useState('pdf');
   const [loading, setLoading]       = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast]           = useState({ show:false, message:'' });
 
-  const showToast = (message) => {
-    setToast({ show: true, message });
-    setTimeout(() => setToast({ show:false, message:'' }), 6000);
+  const showToast = message => {
+    setToast({ show:true, message });
+    setTimeout(() => setToast({ show:false, message:'' }), 7000);
   };
 
   const handleChange = (idx, field, value) => {
@@ -131,8 +151,7 @@ export default function App() {
         body:JSON.stringify(payload)
       });
       if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      setResults(data);
+      setResults(await res.json());
     } catch(err) {
       showToast(err.message);
     } finally {
@@ -154,62 +173,55 @@ export default function App() {
     calculate(payload);
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = e => {
     const file = e.target.files[0];
     if (!file) return;
     setFileLoading(true);
 
+    const ext = file.name.split('.').pop().toLowerCase();
     const reader = new FileReader();
-    reader.onload = async (evt) => {
+    reader.onload = async evt => {
       let parsed = [];
-      const text = evt.target.result;
-
-      // 1) parse
       try {
         if (/\.(xlsx|xls)$/i.test(file.name)) {
           const data = new Uint8Array(evt.target.result);
-          const wb   = XLSX.read(data, { type:'array' });
-          parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'' });
-
+          const wb   = XLSX.read(data,{type:'array'});
+          parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
         } else if (/\.csv$/i.test(file.name)) {
+          const text = evt.target.result;
           const lines = text.trim().split('\n');
-          const keys  = lines[0].split(',').map(h => h.trim());
-          parsed = lines.slice(1).map(row => {
+          const keys  = lines[0].split(',').map(h=>h.trim());
+          parsed = lines.slice(1).map(row=>{
             const vals = row.split(',').map(v=>v.trim());
-            return Object.fromEntries(keys.map((k,i)=>[k, vals[i]]));
+            return Object.fromEntries(keys.map((k,i)=>[k,vals[i]]));
           });
-
         } else {
-          parsed = JSON.parse(text);
-          if (!Array.isArray(parsed)) {
-            throw new Error('JSON must be an array of objects');
-          }
+          parsed = JSON.parse(evt.target.result);
+          if (!Array.isArray(parsed)) throw new Error('JSON must be an array of objects');
         }
-      } catch (err) {
-        showToast(`Upload error:\n${err.message}`);
+      } catch(err) {
+        showToast(`Upload error:\n${err.message}\n\n${exampleSnippet(ext)}`);
         setFileLoading(false);
         e.target.value = '';
         return;
       }
 
-      // 2) validate
       try {
         validateUploadColumns(parsed);
-      } catch (err) {
-        showToast(`Upload error:\n${err.message}`);
+      } catch(err) {
+        showToast(`Upload error:\n${err.message}\n\n${exampleSnippet(ext)}`);
         setFileLoading(false);
         e.target.value = '';
         return;
       }
 
-      // 3) map & calculate
       const payload = parsed.map(r=>({
-        from_location: r.from_location || r.from || r.origin,
-        to_location:   r.to_location   || r.to   || r.destination,
-        mode:          r.mode          || r.transport,
-        weight_kg:     Number(r.weight_kg || r.weight)||0,
+        from_location: r.from_location||r.from||r.origin,
+        to_location:   r.to_location  ||r.to  ||r.destination,
+        mode:          r.mode         ||r.transport,
+        weight_kg:     Number(r.weight_kg||r.weight)||0,
         eu:            String(r.eu).toLowerCase()==='yes' || r.eu===true,
-        state:         (r.state || r.state_code || '').toLowerCase(),
+        state:         (r.state||r.state_code||'').toLowerCase(),
       }));
 
       calculate(payload);
@@ -225,7 +237,6 @@ export default function App() {
       showToast('No results to download');
       return;
     }
-
     if (['csv','xlsx'].includes(format)) {
       const wsData = [
         ['From','Used From','To','Used To','Mode','Distance (km)','CO₂ (kg)','Error'],
@@ -247,7 +258,6 @@ export default function App() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-
     } else {
       const win = window.open('','_blank');
       win.document.write(`
@@ -455,9 +465,9 @@ export default function App() {
       <ToastContainer position="bottom-end" className="p-3">
         <Toast show={toast.show}
                bg="warning"
-               style={{ maxWidth: 350, whiteSpace: 'pre-wrap' }}
+               style={{ maxWidth: 400, whiteSpace: 'pre-wrap' }}
                onClose={()=>setToast({show:false,message:''})}
-               delay={6000}
+               delay={7000}
                autohide>
           <Toast.Header closeButton={false}>
             <FaExclamationCircle className="me-2 text-danger"/>
@@ -470,9 +480,7 @@ export default function App() {
       </ToastContainer>
 
       <footer className="bg-light py-3 text-center">
-        <small className="text-secondary">
-          © {new Date().getFullYear()} Coandagent
-        </small>
+        <small className="text-secondary">© {new Date().getFullYear()} Coandagent</small>
       </footer>
     </>
   );
