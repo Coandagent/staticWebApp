@@ -183,7 +183,7 @@ export default function App() {
               <pre style={{ whiteSpace:'pre-wrap' }}>
 from_location,to_location,mode,weight_kg,eu,state
 Paris,Berlin,air,10,yes,de
-              </pre>
+   
             </div>
           );
           setFileLoading(false);
