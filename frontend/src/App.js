@@ -32,8 +32,7 @@ function validateUploadColumns(data) {
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error('File is empty or invalid JSON/CSV/Excel');
   }
-  const got = Object.keys(data[0])
-    .map(k => k.trim().toLowerCase());
+  const got = Object.keys(data[0]).map(k => k.trim().toLowerCase());
   const want = ['from_location','to_location','mode','weight_kg','eu','state'];
   const missing = want.filter(k => !got.includes(k));
   const extra   = got.filter(k => !want.includes(k));
@@ -41,7 +40,6 @@ function validateUploadColumns(data) {
     const parts = [];
     if (missing.length) parts.push(`missing columns: ${missing.join(', ')}`);
     if (extra.length)   parts.push(`unexpected columns: ${extra.join(', ')}`);
-    // add user example
     parts.push(
       'Expected headers: ' +
       want.map(h => `"${h}"`).join(', ') +
@@ -52,14 +50,12 @@ function validateUploadColumns(data) {
 }
 
 export default function App() {
-  const [rows, setRows]           = useState([
-    { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }
-  ]);
-  const [results, setResults]     = useState([]);
-  const [format, setFormat]       = useState('pdf');
-  const [loading, setLoading]     = useState(false);
+  const [rows, setRows]               = useState([{ from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
+  const [results, setResults]         = useState([]);
+  const [format, setFormat]           = useState('pdf');
+  const [loading, setLoading]         = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
-  const [toast, setToast]         = useState({ show:false, message:'' });
+  const [toast, setToast]             = useState({ show:false, message:'' });
 
   const showToast = message => {
     setToast({ show:true, message });
@@ -78,6 +74,7 @@ export default function App() {
       ...rows,
       { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }
     ]);
+
   const removeRow = idx =>
     setRows(rows.filter((_,i)=>i!==idx));
 
@@ -103,7 +100,7 @@ export default function App() {
     try {
       const res = await fetch('/api/calculate-co2', {
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{ 'Content-Type':'application/json' },
         body:JSON.stringify(payload)
       });
       if (!res.ok) throw new Error(await res.text());
@@ -138,31 +135,21 @@ export default function App() {
       let parsed = [];
       const text = evt.target.result;
 
-      // parse Excel
       if (/\.(xlsx|xls)$/i.test(file.name)) {
         const data = new Uint8Array(evt.target.result);
         const wb   = XLSX.read(data,{ type:'array' });
-        parsed     = XLSX.utils.sheet_to_json(
-          wb.Sheets[wb.SheetNames[0]],
-          { defval:'' }
-        );
-      }
-      // parse CSV
-      else if (/\.csv$/i.test(file.name)) {
+        parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{ defval:'' });
+      } else if (/\.csv$/i.test(file.name)) {
         const lines = text.trim().split('\n');
         const keys  = lines[0].split(',').map(h=>h.trim());
         parsed = lines.slice(1).map(row=>{
           const vals = row.split(',').map(v=>v.trim());
-          return Object.fromEntries(
-            keys.map((k,i)=>[k,vals[i]])
-          );
+          return Object.fromEntries(keys.map((k,i)=>[k,vals[i]]));
         });
-      }
-      // parse JSON
-      else {
+      } else {
         try {
           parsed = JSON.parse(text);
-        } catch(err) {
+        } catch {
           showToast('Upload error: invalid JSON');
           setFileLoading(false);
           e.target.value = '';
@@ -170,7 +157,6 @@ export default function App() {
         }
       }
 
-      // validate columns
       try {
         validateUploadColumns(parsed);
       } catch(err) {
@@ -180,7 +166,6 @@ export default function App() {
         return;
       }
 
-      // map & calculate
       const payload = parsed.map(r=>({
         from_location: r.from_location||r.from||r.origin,
         to_location:   r.to_location  ||r.to  ||r.destination,
@@ -202,15 +187,14 @@ export default function App() {
       showToast('No results to download');
       return;
     }
-    // CSV / XLSX
     if (format==='csv'||format==='xlsx') {
       const wsData = [
         ['From','Used From','To','Used To','Mode','Distance (km)','CO₂ (kg)','Error'],
         ...results.map(r=>[
-          r.from_input, r.from_used,
-          r.to_input,   r.to_used,
-          r.mode,       r.distance_km,
-          r.co2_kg,     r.error||''
+          r.from_input,r.from_used,
+          r.to_input,  r.to_used,
+          r.mode,      r.distance_km,
+          r.co2_kg,    r.error||''
         ]),
       ];
       const ws    = XLSX.utils.aoa_to_sheet(wsData);
@@ -224,9 +208,7 @@ export default function App() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    }
-    // PDF
-    else {
+    } else {
       const win = window.open('','_blank');
       win.document.write(`
 <!DOCTYPE html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
@@ -268,7 +250,6 @@ export default function App() {
         <Container fluid>
           <Navbar.Brand>Coandagent ESG CO₂ Dashboard</Navbar.Brand>
           <Nav className="ms-auto d-flex flex-wrap align-items-center">
-            {/* Upload / Format / Download controls */}
             <Form.Control
               type="file"
               accept=".csv,.json,.xlsx,.xls"
@@ -276,15 +257,8 @@ export default function App() {
               id="file-upload"
               style={{display:'none'}}
             />
-            <Button
-              as="label"
-              htmlFor="file-upload"
-              variant="outline-primary"
-              className="m-1"
-            >
-              {fileLoading
-                ? <Spinner animation="border" size="sm"/>
-                : <FaUpload className="me-1"/>}
+            <Button as="label" htmlFor="file-upload" variant="outline-primary" className="m-1">
+              {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>}
               Upload File
             </Button>
             <Dropdown onSelect={setFormat} className="m-1">
@@ -293,17 +267,11 @@ export default function App() {
               </Dropdown.Toggle>
               <Dropdown.Menu>
                 {['pdf','xlsx','csv'].map(f=>
-                  <Dropdown.Item key={f} eventKey={f}>
-                    {f.toUpperCase()}
-                  </Dropdown.Item>
+                  <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
                 )}
               </Dropdown.Menu>
             </Dropdown>
-            <Button
-              variant="primary"
-              onClick={downloadReport}
-              className="m-1"
-            >
+            <Button variant="primary" onClick={downloadReport} className="m-1">
               <FaDownload/> Download Report
             </Button>
           </Nav>
@@ -311,16 +279,14 @@ export default function App() {
       </Navbar>
 
       <Container className="my-4">
-        {/* Manual Input Table */}
         <Card className="shadow-sm mb-4">
           <Card.Body>
             <Card.Title>Transport CO₂ Calculator</Card.Title>
             <Table bordered responsive className="align-middle">
               <thead className="table-light">
                 <tr>
-                  <th>From</th><th>To</th><th>Mode</th>
-                  <th>Weight (kg)</th><th>EU</th>
-                  <th>State</th><th>Error</th><th></th>
+                  <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
+                  <th>EU</th><th>State</th><th>Error</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -380,11 +346,7 @@ export default function App() {
                       )}
                     </td>
                     <td className="text-center">
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={()=>removeRow(i)}
-                      >
+                      <Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}>
                         <FaTrash/>
                       </Button>
                     </td>
@@ -393,7 +355,6 @@ export default function App() {
               </tbody>
             </Table>
 
-            {/* Action buttons */}
             <Row className="mt-3">
               <Col xs={12} sm="auto" className="mb-2">
                 <Button variant="success" onClick={addRow}>
@@ -401,11 +362,7 @@ export default function App() {
                 </Button>
               </Col>
               <Col xs={12} sm="auto" className="ms-sm-auto">
-                <Button
-                  variant="primary"
-                  onClick={handleManualCalculate}
-                  disabled={loading}
-                >
+                <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
                   {loading
                     ? <><Spinner animation="border" size="sm" className="me-1"/> Calculating…</>
                     : <><FaCalculator className="me-1"/> Calculate</>
@@ -416,7 +373,6 @@ export default function App() {
           </Card.Body>
         </Card>
 
-        {/* Results */}
         {results.length>0 && (
           <Card className="shadow-sm">
             <Card.Body>
@@ -424,9 +380,8 @@ export default function App() {
               <Table striped bordered hover responsive className="mt-3">
                 <thead>
                   <tr>
-                    <th>From (Used)</th><th>To (Used)</th>
-                    <th>Mode</th><th>Distance (km)</th>
-                    <th>CO₂ (kg)</th><th>Error</th>
+                    <th>From (Used)</th><th>To (Used)</th><th>Mode</th>
+                    <th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -458,7 +413,6 @@ export default function App() {
         )}
       </Container>
 
-      {/* Toast */}
       <ToastContainer position="bottom-end" className="p-3">
         <Toast
           bg="warning"
@@ -468,18 +422,15 @@ export default function App() {
           autohide
         >
           <Toast.Header>
-            <FaExclamationCircle className="me-2 text-danger" />
+            <FaExclamationCircle className="me-2 text-danger"/>
             <strong className="me-auto">Error</strong>
           </Toast.Header>
           <Toast.Body>{toast.message}</Toast.Body>
         </Toast>
       </ToastContainer>
 
-      {/* Footer */}
       <footer className="bg-light py-3 text-center">
-        <small className="text-secondary">
-          © {new Date().getFullYear()} Coandagent
-        </small>
+        <small className="text-secondary">© {new Date().getFullYear()} Coandagent</small>
       </footer>
     </>
   );
