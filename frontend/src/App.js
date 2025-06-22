@@ -27,34 +27,70 @@ import {
 } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 
-// --- helper to validate uploaded data columns ---
+// --- helper to validate uploaded data columns with aliases ---
 function validateUploadColumns(data) {
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error('Uploaded file is empty or invalid');
   }
-  const got   = Object.keys(data[0]).map(k => k.trim().toLowerCase());
-  const want  = ['from_location','to_location','mode','weight_kg','eu','state'];
-  const missing = want.filter(k => !got.includes(k));
-  const extra   = got.filter(k => !want.includes(k));
-  if (missing.length || extra.length) {
-    const parts = [];
-    if (missing.length) parts.push(`missing columns: ${missing.join(', ')}`);
-    if (extra.length)   parts.push(`unexpected columns: ${extra.join(', ')}`);
-    throw new Error(parts.join('; '));
+
+  // canonical → accepted header names
+  const mapping = {
+    from_location: ['from_location', 'from', 'origin', 'orig'],
+    to_location:   ['to_location', 'to', 'destination', 'dest'],
+    mode:          ['mode', 'transport', 'method'],
+    weight_kg:     ['weight_kg', 'weight', 'weight (kg)', 'kg'],
+    eu:            ['eu', 'in_eu', 'european_union', 'is_eu'],
+    state:         ['state', 'state_code', 'province', 'region'],
+  };
+
+  // normalize incoming headers
+  const headers = Object.keys(data[0]).map(h => h.trim().toLowerCase());
+
+  const missing = [];
+  const extra   = [];
+
+  // check each canonical
+  for (const [key, aliases] of Object.entries(mapping)) {
+    const found = aliases.find(a => headers.includes(a));
+    if (!found) missing.push(`${key} (aliases: ${aliases.join(', ')})`);
   }
+
+  // any headers that aren't in any alias list?
+  const allAliases = Object.values(mapping).flat();
+  for (const h of headers) {
+    if (!allAliases.includes(h)) extra.push(h);
+  }
+
+  if (missing.length || extra.length) {
+    // build multiline message
+    let msg = '';
+    if (missing.length) {
+      msg += '**Missing columns:**\n' + missing.map(m => `• ${m}`).join('\n');
+    }
+    if (extra.length) {
+      if (msg) msg += '\n\n';
+      msg += '**Unexpected columns:**\n' + extra.map(e => `• ${e}`).join('\n');
+    }
+    throw new Error(msg);
+  }
+
+  // OK
+  return true;
 }
 
 export default function App() {
-  const [rows, setRows]           = useState([{ from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
-  const [results, setResults]     = useState([]);
-  const [format, setFormat]       = useState('pdf');
-  const [loading, setLoading]     = useState(false);
+  const [rows, setRows]             = useState([
+    { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }
+  ]);
+  const [results, setResults]       = useState([]);
+  const [format, setFormat]         = useState('pdf');
+  const [loading, setLoading]       = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
-  const [toast, setToast]         = useState({ show:false, message:'' });
+  const [toast, setToast]           = useState({ show:false, message:'' });
 
-  const showToast = message => {
-    setToast({ show:true, message });
-    setTimeout(() => setToast({ show:false, message:'' }), 4000);
+  const showToast = (message) => {
+    setToast({ show: true, message });
+    setTimeout(() => setToast({ show:false, message:'' }), 6000);
   };
 
   const handleChange = (idx, field, value) => {
@@ -89,7 +125,11 @@ export default function App() {
   const calculate = async payload => {
     setLoading(true);
     try {
-      const res = await fetch('/api/calculate-co2',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const res = await fetch('/api/calculate-co2',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setResults(data);
@@ -114,61 +154,62 @@ export default function App() {
     calculate(payload);
   };
 
-  const handleFileUpload = e => {
+  const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setFileLoading(true);
 
     const reader = new FileReader();
-    reader.onload = async evt => {
+    reader.onload = async (evt) => {
       let parsed = [];
       const text = evt.target.result;
 
-      // parse Excel
-      if (/\.(xlsx|xls)$/i.test(file.name)) {
-        const data = new Uint8Array(evt.target.result);
-        const wb   = XLSX.read(data,{type:'array'});
-        parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
-
-      // parse CSV
-      } else if (/\.csv$/i.test(file.name)) {
-        const lines = text.trim().split('\n');
-        const keys  = lines[0].split(',').map(h=>h.trim());
-        parsed = lines.slice(1).map(row=>{
-          const vals = row.split(',').map(v=>v.trim());
-          return Object.fromEntries(keys.map((k,i)=>[k,vals[i]]));
-        });
-
-      // parse JSON
-      } else {
-        try {
-          parsed = JSON.parse(text);
-        } catch(err) {
-          showToast('Upload error: Invalid JSON');
-          setFileLoading(false);
-          e.target.value = '';
-          return;
-        }
-      }
-
-      // validate columns
+      // 1) parse
       try {
-        validateUploadColumns(parsed);
-      } catch(err) {
-        showToast(`Upload error: ${err.message}`);
+        if (/\.(xlsx|xls)$/i.test(file.name)) {
+          const data = new Uint8Array(evt.target.result);
+          const wb   = XLSX.read(data, { type:'array' });
+          parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'' });
+
+        } else if (/\.csv$/i.test(file.name)) {
+          const lines = text.trim().split('\n');
+          const keys  = lines[0].split(',').map(h => h.trim());
+          parsed = lines.slice(1).map(row => {
+            const vals = row.split(',').map(v=>v.trim());
+            return Object.fromEntries(keys.map((k,i)=>[k, vals[i]]));
+          });
+
+        } else {
+          parsed = JSON.parse(text);
+          if (!Array.isArray(parsed)) {
+            throw new Error('JSON must be an array of objects');
+          }
+        }
+      } catch (err) {
+        showToast(`Upload error:\n${err.message}`);
         setFileLoading(false);
         e.target.value = '';
         return;
       }
 
-      // map & calculate
+      // 2) validate
+      try {
+        validateUploadColumns(parsed);
+      } catch (err) {
+        showToast(`Upload error:\n${err.message}`);
+        setFileLoading(false);
+        e.target.value = '';
+        return;
+      }
+
+      // 3) map & calculate
       const payload = parsed.map(r=>({
-        from_location: r.from_location||r.from||r.origin,
-        to_location:   r.to_location  ||r.to  ||r.destination,
-        mode:          r.mode         ||r.transport,
-        weight_kg:     Number(r.weight_kg||r.weight)||0,
-        eu:            String(r.eu).toLowerCase()==='yes',
-        state:         (r.state||'').toLowerCase(),
+        from_location: r.from_location || r.from || r.origin,
+        to_location:   r.to_location   || r.to   || r.destination,
+        mode:          r.mode          || r.transport,
+        weight_kg:     Number(r.weight_kg || r.weight)||0,
+        eu:            String(r.eu).toLowerCase()==='yes' || r.eu===true,
+        state:         (r.state || r.state_code || '').toLowerCase(),
       }));
 
       calculate(payload);
@@ -185,8 +226,7 @@ export default function App() {
       return;
     }
 
-    // CSV / XLSX
-    if (format==='csv' || format==='xlsx') {
+    if (['csv','xlsx'].includes(format)) {
       const wsData = [
         ['From','Used From','To','Used To','Mode','Distance (km)','CO₂ (kg)','Error'],
         ...results.map(r=>[
@@ -208,7 +248,6 @@ export default function App() {
       a.click();
       document.body.removeChild(a);
 
-    // PDF
     } else {
       const win = window.open('','_blank');
       win.document.write(`
@@ -269,7 +308,7 @@ export default function App() {
                 Format: {format.toUpperCase()}
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                {['pdf','xlsx','csv'].map(f=>
+                {['pdf','xlsx','csv'].map(f =>
                   <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
                 )}
               </Dropdown.Menu>
@@ -293,46 +332,56 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r,i)=>
-                  <tr key={i} className={r.error?'table-danger':''}>
+                {rows.map((r,i) =>
+                  <tr key={i} className={r.error ? 'table-danger' : ''}>
                     <td>
-                      <Form.Control placeholder="City or Code" value={r.from}
-                        onChange={e=>handleChange(i,'from',e.target.value)}/>
+                      <Form.Control
+                        placeholder="City or Code"
+                        value={r.from}
+                        onChange={e=>handleChange(i,'from',e.target.value)}
+                      />
                     </td>
                     <td>
-                      <Form.Control placeholder="City or Code" value={r.to}
-                        onChange={e=>handleChange(i,'to',e.target.value)}/>
+                      <Form.Control
+                        placeholder="City or Code"
+                        value={r.to}
+                        onChange={e=>handleChange(i,'to',e.target.value)}
+                      />
                     </td>
                     <td>
                       <Form.Select value={r.mode}
-                        onChange={e=>handleChange(i,'mode',e.target.value)}>
+                                   onChange={e=>handleChange(i,'mode',e.target.value)}>
                         <option value="road">Road</option>
                         <option value="air">Air</option>
                         <option value="sea">Sea</option>
                       </Form.Select>
                     </td>
                     <td>
-                      <Form.Control type="number" placeholder="0" value={r.weight}
-                        onChange={e=>handleChange(i,'weight',e.target.value)}/>
+                      <Form.Control type="number" placeholder="0"
+                                    value={r.weight}
+                                    onChange={e=>handleChange(i,'weight',e.target.value)} />
                     </td>
                     <td className="text-center">
-                      <Form.Check type="checkbox" checked={r.eu}
-                        onChange={e=>handleChange(i,'eu',e.target.checked)}/>
+                      <Form.Check type="checkbox"
+                                  checked={r.eu}
+                                  onChange={e=>handleChange(i,'eu',e.target.checked)} />
                     </td>
                     <td>
-                      <Form.Control placeholder="State-code" value={r.state}
-                        onChange={e=>handleChange(i,'state',e.target.value)}/>
+                      <Form.Control placeholder="State-code"
+                                    value={r.state}
+                                    onChange={e=>handleChange(i,'state',e.target.value)} />
                     </td>
                     <td>
                       {r.error && (
                         <Badge bg="danger">
-                          <FaExclamationCircle className="me-1"/> {r.error}
+                          <FaExclamationCircle className="me-1"/>
+                          {r.error}
                         </Badge>
                       )}
                     </td>
                     <td className="text-center">
                       <Button variant="outline-danger" size="sm"
-                        onClick={()=>removeRow(i)}>
+                              onClick={()=>removeRow(i)}>
                         <FaTrash/>
                       </Button>
                     </td>
@@ -348,7 +397,9 @@ export default function App() {
                 </Button>
               </Col>
               <Col xs={12} sm="auto" className="ms-sm-auto">
-                <Button variant="primary" onClick={handleManualCalculate} disabled={loading}>
+                <Button variant="primary"
+                        onClick={handleManualCalculate}
+                        disabled={loading}>
                   {loading
                    ? <><Spinner animation="border" size="sm" className="me-1"/> Calculating…</>
                    : <><FaCalculator className="me-1"/> Calculate</>
@@ -359,7 +410,7 @@ export default function App() {
           </Card.Body>
         </Card>
 
-        {results.length>0 && (
+        {results.length > 0 && (
           <Card className="shadow-sm">
             <Card.Body>
               <Card.Title>Results</Card.Title>
@@ -371,16 +422,24 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r,i)=>
-                    <tr key={i} className={r.error?'table-danger':''}>
-                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
-                      <td>{r.to_input}   <small className="text-muted">({r.to_used})</small></td>
+                  {results.map((r,i) =>
+                    <tr key={i} className={r.error ? 'table-danger' : ''}>
+                      <td>
+                        {r.from_input}
+                        <small className="text-muted"> ({r.from_used})</small>
+                      </td>
+                      <td>
+                        {r.to_input}
+                        <small className="text-muted"> ({r.to_used})</small>
+                      </td>
                       <td className="text-capitalize">{r.mode}</td>
-                      <td>{r.distance_km}</td><td>{r.co2_kg}</td>
+                      <td>{r.distance_km}</td>
+                      <td>{r.co2_kg}</td>
                       <td>
                         {r.error && (
                           <Badge bg="danger">
-                            <FaExclamationCircle className="me-1"/> {r.error}
+                            <FaExclamationCircle className="me-1"/>
+                            {r.error}
                           </Badge>
                         )}
                       </td>
@@ -394,19 +453,26 @@ export default function App() {
       </Container>
 
       <ToastContainer position="bottom-end" className="p-3">
-        <Toast bg="warning" show={toast.show}
-          onClose={()=>setToast({show:false,message:''})}
-          delay={4000} autohide>
-          <Toast.Header>
+        <Toast show={toast.show}
+               bg="warning"
+               style={{ maxWidth: 350, whiteSpace: 'pre-wrap' }}
+               onClose={()=>setToast({show:false,message:''})}
+               delay={6000}
+               autohide>
+          <Toast.Header closeButton={false}>
             <FaExclamationCircle className="me-2 text-danger"/>
-            <strong className="me-auto">Error</strong>
+            <strong className="me-auto">Upload Error</strong>
           </Toast.Header>
-          <Toast.Body>{toast.message}</Toast.Body>
+          <Toast.Body>
+            {toast.message}
+          </Toast.Body>
         </Toast>
       </ToastContainer>
 
       <footer className="bg-light py-3 text-center">
-        <small className="text-secondary">© {new Date().getFullYear()} Coandagent</small>
+        <small className="text-secondary">
+          © {new Date().getFullYear()} Coandagent
+        </small>
       </footer>
     </>
   );
