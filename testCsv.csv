@@ -1,0 +1,4 @@
+from_location,to_location,mode,weight_kg,eu,state
+London,Paris,air,10,,
+Huayllati,Duraznopampa,road,5,,
+Berlin,Munich,sea,20,,
