@@ -37,7 +37,7 @@ export default function App() {
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '' });
 
-  const showToast = message => {
+  const showToast = (message) => {
     setToast({ show: true, message });
     setTimeout(() => setToast({ show: false, message: '' }), 4000);
   };
@@ -54,11 +54,11 @@ export default function App() {
       ...rows,
       { from: '', to: '', mode: 'road', weight: '', eu: true, state: '', error: '' },
     ]);
-  const removeRow = idx => setRows(rows.filter((_, i) => i !== idx));
+  const removeRow = (idx) => setRows(rows.filter((_, i) => i !== idx));
 
   const validate = () => {
     let valid = true;
-    const updated = rows.map(r => {
+    const updated = rows.map((r) => {
       const errs = [];
       if (!r.from) errs.push('Origin required');
       if (!r.to) errs.push('Destination required');
@@ -66,14 +66,14 @@ export default function App() {
       return { ...r, error: errs.join(', ') };
     });
     setRows(updated);
-    if (updated.some(r => r.error)) {
+    if (updated.some((r) => r.error)) {
       showToast('Please fix input errors');
       valid = false;
     }
     return valid;
   };
 
-  const calculate = async payload => {
+  const calculate = async (payload) => {
     setLoading(true);
     try {
       const res = await fetch('/api/calculate-co2', {
@@ -94,7 +94,7 @@ export default function App() {
 
   const handleManualCalculate = () => {
     if (!validate()) return;
-    const payload = rows.map(r => ({
+    const payload = rows.map((r) => ({
       from_location: r.from,
       to_location: r.to,
       mode: r.mode,
@@ -105,31 +105,32 @@ export default function App() {
     calculate(payload);
   };
 
-  const handleFileUpload = e => {
+  const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setFileLoading(true);
 
     const reader = new FileReader();
-    reader.onload = async evt => {
+    reader.onload = async (evt) => {
       let parsed = [];
       const text = evt.target.result;
+
       if (/\.(xlsx|xls)$/i.test(file.name)) {
         const data = new Uint8Array(evt.target.result);
         const wb = XLSX.read(data, { type: 'array' });
         parsed = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
       } else if (/\.csv$/i.test(file.name)) {
         const lines = text.trim().split('\n');
-        const keys = lines[0].split(',').map(h => h.trim());
-        parsed = lines.slice(1).map(row => {
-          const vals = row.split(',').map(v => v.trim());
+        const keys = lines[0].split(',').map((h) => h.trim());
+        parsed = lines.slice(1).map((row) => {
+          const vals = row.split(',').map((v) => v.trim());
           return Object.fromEntries(keys.map((k, i) => [k, vals[i]]));
         });
       } else {
         parsed = JSON.parse(text);
       }
 
-      const payload = parsed.map(r => ({
+      const payload = parsed.map((r) => ({
         from_location: r.from_location || r.from || r.origin,
         to_location: r.to_location || r.to || r.destination,
         mode: r.mode || r.transport,
@@ -151,7 +152,98 @@ export default function App() {
       showToast('No results to download');
       return;
     }
-    // ... CSV / XLSX / PDF logic unchanged ...
+
+    if (format === 'csv' || format === 'xlsx') {
+      const wsData = [
+        ['From','Used From','To','Used To','Mode','Distance (km)','CO₂ (kg)','Error'],
+        ...results.map((r) => [
+          r.from_input,
+          r.from_used,
+          r.to_input,
+          r.to_used,
+          r.mode,
+          r.distance_km,
+          r.co2_kg,
+          r.error || ''
+        ]),
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Results');
+      const wbout = XLSX.write(wb, {
+        bookType: format === 'xlsx' ? 'xlsx' : 'csv',
+        type: 'array',
+      });
+      const blob = new Blob([wbout], { type: 'application/octet-stream' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `co2-results.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      // PDF
+      const win = window.open('', '_blank');
+      win.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CO₂ Transport Report</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; margin:40px; position:relative; }
+  .watermark {
+    position:absolute; top:30%; left:50%;
+    transform:translate(-50%,-50%) rotate(-30deg);
+    font-size:120px; color:rgba(0,64,128,0.08);
+    user-select:none;
+  }
+  header { text-align:center; margin-bottom:40px; }
+  header h1 { color:#004080; margin:10px 0 0; font-size:28px; }
+  table { width:100%; border-collapse:collapse; margin-top:20px; }
+  th { background:#004080; color:#fff; padding:10px; text-align:left; }
+  td { border:1px solid #ddd; padding:8px; }
+  footer { margin-top:40px; font-size:12px; text-align:center; color:#888; }
+</style>
+</head>
+<body>
+  <div class="watermark">Coandagent</div>
+  <header>
+    <h1>CO₂ Transport Report</h1>
+    <p>${new Date().toLocaleDateString()}</p>
+  </header>
+  <table>
+    <thead>
+      <tr>
+        <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
+        <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${results
+        .map(
+          (r) => `
+      <tr>
+        <td>${r.from_input}</td>
+        <td>${r.from_used}</td>
+        <td>${r.to_input}</td>
+        <td>${r.to_used}</td>
+        <td>${r.mode}</td>
+        <td>${r.distance_km}</td>
+        <td>${r.co2_kg}</td>
+        <td>${r.error || ''}</td>
+      </tr>`
+        )
+        .join('')}
+    </tbody>
+  </table>
+  <footer>© ${new Date().getFullYear()} Coandagent · All rights reserved</footer>
+</body>
+</html>`);
+      win.document.close();
+      win.focus();
+      win.print();
+    }
   };
 
   return (
@@ -186,7 +278,7 @@ export default function App() {
                 Format: {format.toUpperCase()}
               </Dropdown.Toggle>
               <Dropdown.Menu>
-                {['pdf', 'xlsx', 'csv'].map(f => (
+                {['pdf', 'xlsx', 'csv'].map((f) => (
                   <Dropdown.Item key={f} eventKey={f}>
                     {f.toUpperCase()}
                   </Dropdown.Item>
@@ -225,20 +317,20 @@ export default function App() {
                       <Form.Control
                         placeholder="City or Code"
                         value={r.from}
-                        onChange={e => handleChange(i, 'from', e.target.value)}
+                        onChange={(e) => handleChange(i, 'from', e.target.value)}
                       />
                     </td>
                     <td>
                       <Form.Control
                         placeholder="City or Code"
                         value={r.to}
-                        onChange={e => handleChange(i, 'to', e.target.value)}
+                        onChange={(e) => handleChange(i, 'to', e.target.value)}
                       />
                     </td>
                     <td>
                       <Form.Select
                         value={r.mode}
-                        onChange={e => handleChange(i, 'mode', e.target.value)}
+                        onChange={(e) => handleChange(i, 'mode', e.target.value)}
                       >
                         <option value="road">Road</option>
                         <option value="air">Air</option>
@@ -250,21 +342,21 @@ export default function App() {
                         type="number"
                         placeholder="0"
                         value={r.weight}
-                        onChange={e => handleChange(i, 'weight', e.target.value)}
+                        onChange={(e) => handleChange(i, 'weight', e.target.value)}
                       />
                     </td>
                     <td className="text-center">
                       <Form.Check
                         type="checkbox"
                         checked={r.eu}
-                        onChange={e => handleChange(i, 'eu', e.target.checked)}
+                        onChange={(e) => handleChange(i, 'eu', e.target.checked)}
                       />
                     </td>
                     <td>
                       <Form.Control
                         placeholder="State-code"
                         value={r.state}
-                        onChange={e => handleChange(i, 'state', e.target.value)}
+                        onChange={(e) => handleChange(i, 'state', e.target.value)}
                       />
                     </td>
                     <td>
@@ -303,11 +395,7 @@ export default function App() {
                 >
                   {loading ? (
                     <>
-                      <Spinner
-                        animation="border"
-                        size="sm"
-                        className="me-1"
-                      />
+                      <Spinner animation="border" size="sm" className="me-1" />
                       Calculating…
                     </>
                   ) : (
@@ -384,9 +472,7 @@ export default function App() {
       </ToastContainer>
 
       <footer className="bg-light py-3 text-center">
-        <small className="text-secondary">
-          © {new Date().getFullYear()} Coandagent
-        </small>
+        <small className="text-secondary">© {new Date().getFullYear()} Coandagent</small>
       </footer>
     </>
   );
