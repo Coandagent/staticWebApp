@@ -33,8 +33,8 @@ function validateUploadColumns(data) {
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error('File is empty or invalid JSON/CSV/Excel');
   }
-  const got   = Object.keys(data[0]).map(k => k.trim().toLowerCase());
-  const want  = ['from_location','to_location','mode','weight_kg','eu','state'];
+  const got     = Object.keys(data[0]).map(k => k.trim().toLowerCase());
+  const want    = ['from_location','to_location','mode','weight_kg','eu','state'];
   const missing = want.filter(k => !got.includes(k));
   const extra   = got.filter(k => !want.includes(k));
   if (missing.length || extra.length) {
@@ -253,7 +253,7 @@ Paris,Berlin,air,10,yes,de`;
       showToast('No results to download');
       return;
     }
-    if (format==='csv' || format==='xlsx') {
+    if (format === 'csv' || format === 'xlsx') {
       const wsData = [
         ['From','Used From','To','Used To','Mode','Distance (km)','CO₂ (kg)','Error'],
         ...results.map(r=>[
@@ -280,18 +280,16 @@ Paris,Berlin,air,10,yes,de`;
 <!DOCTYPE html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
 <style>
   body{font-family:'Segoe UI',sans-serif;margin:40px;position:relative}
-  .watermark{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);
-             font-size:120px;color:rgba(0,64,128,0.08);user-select:none}
+  .watermark{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:120px;color:rgba(0,64,128,0.08);user-select:none}
   header{text-align:center;margin-bottom:40px}
   header h1{color:#004080;font-size:28px;margin:0}
   table{width:100%;border-collapse:collapse;margin-top:20px}
   th{background:#004080;color:#fff;padding:10px;text-align:left}
   td{border:1px solid #ddd;padding:8px}
-  footer{margin-top:40px;font-size:12px;text-align:center;color:#888'}
+  footer{margin-top:40px;font-size:12px;text-align:center;color:#888;}
 </style></head><body>
   <div class="watermark">Coandagent</div>
-  <header><h1>CO₂ Transport Report</h1>
-    <p>${new Date().toLocaleDateString()}</p></header>
+  <header><h1>CO₂ Transport Report</h1><p>${new Date().toLocaleDateString()}</p></header>
   <table><thead><tr>
     <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
     <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
@@ -357,7 +355,7 @@ Paris,Berlin,air,10,yes,de`;
                 <tr>
                   <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
                   <th>EU</th><th>State</th><th>Error</th><th></th>
-                </tr>
+                </tr>  
               </thead>
               <tbody>
                 {rows.map((r, i) =>
