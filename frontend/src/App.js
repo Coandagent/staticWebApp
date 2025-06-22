@@ -452,7 +452,7 @@ Paris,Berlin,air,10,yes,de
             <strong className="me-auto">Error</strong>
           </Toast.Header>
           <Toast.Body>{toast.message}</Toast.Body>
-        </Toast>`
+        </Toast>
       </ToastContainer>
 
       <footer className="bg-light py-3 text-center">
