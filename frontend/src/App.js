@@ -1,5 +1,3 @@
-// frontend/src/App.js
-
 import React, { useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
@@ -32,6 +30,21 @@ function validateUploadColumns(data) {
 
 // --- build PDF HTML helper ---
 function buildPdfHtml(results) {
+  // Build the rows without nesting backticks
+  const rowsHtml = results.map(r =>
+    '<tr>' +
+      `<td>${r.from_input}</td>` +
+      `<td>${r.from_used}</td>` +
+      `<td>${r.to_input}</td>` +
+      `<td>${r.to_used}</td>` +
+      `<td>${r.mode}</td>` +
+      `<td>${r.distance_km}</td>` +
+      `<td>${r.co2_kg}</td>` +
+      `<td>${r.error || ''}</td>` +
+    '</tr>'
+  ).join('');
+
+  // Single template literal for the entire document
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -63,19 +76,12 @@ function buildPdfHtml(results) {
       </tr>
     </thead>
     <tbody>
-      ${results.map(r => `
-        <tr>
-          <td>${r.from_input}</td><td>${r.from_used}</td>
-          <td>${r.to_input}</td><td>${r.to_used}</td>
-          <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
-          <td>${r.error || ''}</td>
-        </tr>
-      `).join('')}
+      ${rowsHtml}
     </tbody>
   </table>
   <footer>© ${new Date().getFullYear()} Coandagent · All rights reserved</footer>
 </body>
-</html>`;
+</html>`;  
 }
 
 export default function App() {
@@ -286,11 +292,10 @@ Paris,Berlin,air,10,yes,de
             <Dropdown onSelect={setFormat} className="m-1">
               <Dropdown.Toggle variant="outline-secondary">
                 Format: {format.toUpperCase()}
-              </Dropdown.Toggle>
+              }</Dropdown.Toggle>
               <Dropdown.Menu>
                 {['pdf','xlsx','csv'].map(f =>
-                  <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
-                )}
+                  <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown<Item>)}
               </Dropdown.Menu>
             </Dropdown>
             <Button variant="primary" onClick={downloadReport} className="m-1">
