@@ -59,7 +59,7 @@ export default function App() {
 
   const handleManualCalculate = () => {
     const payload = rows.map(r => ({
-      from_location: r.from,     // accepts city name or airport/seaport code
+      from_location: r.from,
       to_location:   r.to,
       mode:          r.mode,
       weight_kg:     Number(r.weight) || 0,
@@ -141,53 +141,79 @@ export default function App() {
     } else if (format === 'pdf') {
       const win = window.open('', '_blank');
       win.document.write(`
-        <html>
-          <head>
-            <title>CO₂ Report</title>
-            <style>
-              body { font-family: Arial, sans-serif; margin: 40px; position: relative; }
-              .watermark {
-                position: absolute; top: 30%; left: 25%;
-                font-size: 100px; color: rgba(0,0,255,0.05);
-                transform: rotate(-30deg);
-                white-space: nowrap;
-              }
-              h1, h2 { color: #004080; margin: 0; }
-              h1 { font-size: 32px; }
-              h2 { font-size: 20px; margin-bottom: 20px; }
-              table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-              th { background-color: #004080; color: white; padding: 8px; }
-              td { border: 1px solid #ddd; padding: 6px; }
-            </style>
-          </head>
-          <body>
-            <div class="watermark">Coandagent</div>
-            <h1>Coandagent</h1>
-            <h2>CO₂ Transport Report</h2>
-            <table>
-              <thead>
-                <tr>
-                  <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
-                  <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${results.map(r => `
-                  <tr>
-                    <td>${r.from_input}</td>
-                    <td>${r.from_used}</td>
-                    <td>${r.to_input}</td>
-                    <td>${r.to_used}</td>
-                    <td>${r.mode}</td>
-                    <td>${r.distance_km}</td>
-                    <td>${r.co2_kg}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </body>
-        </html>
-      `);
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>CO₂ Transport Report</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 40px; position: relative; }
+    .watermark {
+      position: absolute;
+      top: 30%; left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-size: 120px; color: rgba(0,64,128,0.08);
+      pointer-events: none;
+      user-select: none;
+    }
+    header { text-align: center; margin-bottom: 40px; }
+    header img { height: 60px; }
+    header h1 { color: #004080; margin: 10px 0 0; font-size: 28px; }
+    header p { margin: 4px 0 0; font-size: 14px; color: #666; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th {
+      background-color: #004080;
+      color: white;
+      padding: 10px;
+      text-align: left;
+      font-size: 14px;
+    }
+    td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      font-size: 13px;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 12px;
+      text-align: center;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="watermark">Coandagent</div>
+  <header>
+    <img src="https://your-cdn.com/logo.png" alt="Coandagent logo">
+    <h1>CO₂ Transport Report</h1>
+    <p>Generated on ${new Date().toLocaleDateString()}</p>
+  </header>
+  <table>
+    <thead>
+      <tr>
+        <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
+        <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${results.map(r => `
+        <tr>
+          <td>${r.from_input}</td>
+          <td>${r.from_used}</td>
+          <td>${r.to_input}</td>
+          <td>${r.to_used}</td>
+          <td>${r.mode}</td>
+          <td>${r.distance_km}</td>
+          <td>${r.co2_kg}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  <footer>
+    © ${new Date().getFullYear()} Coandagent • All rights reserved
+  </footer>
+</body>
+</html>`);
       win.document.close();
       win.focus();
       win.print();
@@ -214,7 +240,6 @@ export default function App() {
               }
               Upload File
             </Button>
-
             <Dropdown onSelect={setFormat} className="me-3">
               <Dropdown.Toggle variant="outline-secondary">
                 Format: {format.toUpperCase()}
@@ -225,7 +250,6 @@ export default function App() {
                 ))}
               </Dropdown.Menu>
             </Dropdown>
-
             <Button variant="primary" onClick={downloadReport}>
               <FaDownload /> Download Report
             </Button>
@@ -257,7 +281,7 @@ export default function App() {
                     <td>
                       <Form.Control
                         placeholder="City or Code"
-                        value={r.to}
+                        value={r.to} 
                         onChange={e => handleChange(i,'to',e.target.value)}
                       />
                     </td>
