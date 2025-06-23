@@ -36,7 +36,7 @@ module.exports = async function(context, req) {
   if (user.Plan === "free" && user.CountThisMonth >= 5) {
     context.res = {
       status: 403,
-      body: "Free tier limit reached (5 calculations per month). Upgrade to paid to continue."
+      body: "Free tier limit reached (5 calculations per day). Upgrade to paid to continue."
     };
     return;
   }
