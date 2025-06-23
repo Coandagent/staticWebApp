@@ -7,7 +7,11 @@
 
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { FaUserPlus, FaRoute, FaChartLine, FaHandshake, FaTruck, FaShip, FaPlane } from 'react-icons/fa';
+import {
+  FaUserPlus, FaRoute, FaChartLine, FaHandshake, FaTruck, FaShip, FaPlane,
+  FaUpload, FaCalculator, FaDownload, FaTrash, FaExclamationCircle,
+  FaChevronLeft, FaChevronRight
+} from 'react-icons/fa';
 import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
 
@@ -17,13 +21,7 @@ import {
   Badge, Modal
 } from 'react-bootstrap';
 
-import {
-  FaUpload, FaCalculator, FaDownload, FaTrash,
-  FaExclamationCircle, FaChevronLeft, FaChevronRight
-} from 'react-icons/fa';
-
 import * as XLSX from 'xlsx';
-
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -33,35 +31,25 @@ function validateUploadColumns(data) {
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error('Uploaded file is empty or invalid');
   }
-
   const mapping = {
-    from_location: ['from_location', 'from', 'origin', 'orig'],
-    to_location:   ['to_location', 'to', 'destination', 'dest'],
-    mode:          ['mode', 'transport', 'method'],
-    weight_kg:     ['weight_kg', 'weight', 'weight (kg)', 'kg'],
-    eu:            ['eu', 'in_eu', 'european_union', 'is_eu'],
-    state:         ['state', 'state_code', 'province', 'region'],
+    from_location: ['from_location','from','origin','orig'],
+    to_location:   ['to_location','to','destination','dest'],
+    mode:          ['mode','transport','method'],
+    weight_kg:     ['weight_kg','weight','weight (kg)','kg'],
+    eu:            ['eu','in_eu','european_union','is_eu'],
+    state:         ['state','state_code','province','region'],
   };
   const headers = Object.keys(data[0]).map(h => h.trim().toLowerCase());
   const missing = [], extra = [];
   for (const [key, aliases] of Object.entries(mapping)) {
-    if (!aliases.some(a => headers.includes(a))) {
-      missing.push(`${key} (aliases: ${aliases.join(', ')})`);
-    }
+    if (!aliases.some(a => headers.includes(a))) missing.push(`${key} (aliases: ${aliases.join(', ')})`);
   }
   const allAliases = Object.values(mapping).flat();
-  headers.forEach(h => {
-    if (!allAliases.includes(h)) extra.push(h);
-  });
+  headers.forEach(h => { if (!allAliases.includes(h)) extra.push(h); });
   if (missing.length || extra.length) {
     let msg = '';
-    if (missing.length) {
-      msg += '**Missing columns:**\n' + missing.map(m => `• ${m}`).join('\n');
-    }
-    if (extra.length) {
-      if (msg) msg += '\n\n';
-      msg += '**Unexpected columns:**\n' + extra.map(e => `• ${e}`).join('\n');
-    }
+    if (missing.length) msg += '**Missing columns:**\n' + missing.map(m => `• ${m}`).join('\n');
+    if (extra.length) msg += (msg?'\n\n':'') + '**Unexpected columns:**\n' + extra.map(e => `• ${e}`).join('\n');
     throw new Error(msg);
   }
   return true;
@@ -70,32 +58,18 @@ function validateUploadColumns(data) {
 function exampleSnippet(ext) {
   switch (ext) {
     case 'csv':
-      return (
-        '**Example CSV format:**\n' +
-        'from_location,to_location,mode,weight_kg,eu,state\n' +
-        'Copenhagen,Berlin,road,100,yes,BE\n'
-      );
-    case 'xlsx':
-    case 'xls':
-      return (
-        '**Example Excel headers (first row):**\n' +
-        'from_location | to_location | mode | weight_kg | eu | state\n' +
-        '(then data rows beneath)\n'
-      );
+      return '**Example CSV format:**\nfrom_location,to_location,mode,weight_kg,eu,state\nCopenhagen,Berlin,road,100,yes,BE\n';
+    case 'xlsx': case 'xls':
+      return '**Example Excel headers (first row):**\nfrom_location | to_location | mode | weight_kg | eu | state\n(then data rows beneath)\n';
     case 'json':
-      return (
-        '**Example JSON format:**\n' +
-        '[\n' +
-        '  { "from_location": "Copenhagen", "to_location": "Berlin", "mode": "road", "weight_kg": 100, "eu": true, "state": "BE" }\n' +
-        ']\n'
-      );
+      return '**Example JSON format:**\n[\n  { "from_location": "Copenhagen", "to_location": "Berlin", "mode": "road", "weight_kg": 100, "eu": true, "state": "BE" }\n]\n';
     default:
       return '';
   }
 }
 
 export default function App() {
-  // auth and quota state
+  // auth + quota state
   const [user, setUser] = useState(null);
   const [quota, setQuota] = useState({ Plan: '', CountThisMonth: 0 });
 
@@ -107,21 +81,16 @@ export default function App() {
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast] = useState({ show:false, message:'' });
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [history, setHistory] = useState([]);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   const showToast = message => {
     setToast({ show:true, message });
     setTimeout(() => setToast({ show:false, message:'' }), 7000);
   };
 
-  // fetch auth & initial user
+  // fetch user
   useEffect(() => {
     fetch('/.auth/me')
-      .then(res => {
-        if (!res.ok) throw new Error('Not logged in');
-        return res.json();
-      })
+      .then(res => { if (!res.ok) throw new Error(); return res.json(); })
       .then(data => setUser(data.clientPrincipal))
       .catch(() => setUser(null));
   }, []);
@@ -129,122 +98,96 @@ export default function App() {
   // fetch quota after login
   useEffect(() => {
     if (user) {
-      fetch('/api/GetQuota')
-        .then(r => r.json())
-        .then(setQuota)
-        .catch(() => {});
+      fetch('/api/GetQuota').then(r => r.json()).then(setQuota).catch(() => {});
     }
   }, [user]);
 
-  // handle rows
-  const handleChange = (idx, field, value) => {
-    const u = [...rows];
-    u[idx][field] = value;
-    u[idx].error = '';
-    setRows(u);
+  // row handlers
+  const handleChange = (i, f, v) => {
+    const u = [...rows]; u[i][f] = v; u[i].error = ''; setRows(u);
   };
-  const addRow = () => setRows([...rows, { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
-  const removeRow = idx => setRows(rows.filter((_,i) => i !== idx));
+  const addRow    = () => setRows([...rows, { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
+  const removeRow = i => setRows(rows.filter((_,j)=>j!==i));
 
-  // validation
+  // validate inputs
   const validate = () => {
-    let valid = true;
+    let ok = true;
     const u = rows.map(r => {
       const errs = [];
-      if (!r.from) errs.push('Origin required');
-      if (!r.to) errs.push('Destination required');
+      if (!r.from)   errs.push('Origin required');
+      if (!r.to)     errs.push('Destination required');
       if (!r.weight) errs.push('Weight required');
-      return { ...r, error: errs.join(', ') };
+      return {...r, error: errs.join(', ')};
     });
     setRows(u);
-    if (u.some(r => r.error)) {
-      showToast('Please fix input errors');
-      valid = false;
-    }
-    return valid;
+    if (u.some(r=>r.error)) { showToast('Please fix input errors'); ok = false; }
+    return ok;
   };
 
-  // calculate only
+  // calculate-only
   const calculate = async payload => {
     setLoading(true);
     try {
       const res = await fetch('/api/calculate-co2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
       });
       if (!res.ok) throw new Error(await res.text());
       setResults(await res.json());
-    } catch (err) {
-      showToast(err.message);
+    } catch (e) {
+      showToast(e.message);
     } finally {
       setLoading(false);
       setFileLoading(false);
     }
   };
 
-  // fetch history
-  const fetchHistory = async () => {
-    try {
-      const res = await fetch('/api/GetCo2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([]),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      setHistory(data);
-    } catch (err) {
-      showToast(err.message);
-    }
-  };
-
-  const handleViewHistory = () => {
-    setShowHistoryModal(true);
-    fetchHistory();
-  };
-
-  // calculate & save with quota enforcement
-  const handleCalculateAndSave = async () => {
-    if (!validate()) return;
-    if (quota.Plan === 'free' && quota.CountThisMonth >= 5) {
-      return showToast('Gratis-bruger har nået 5 beregninger i denne måned. Opgrader for flere.');
-    }
-
-    const payload = rows.map(r => ({
-      from_location: r.from,
-      to_location:   r.to,
-      mode:          r.mode,
-      weight_kg:     Number(r.weight) || 0,
-      eu:            r.eu,
-      state:         r.state.trim().toLowerCase(),
-    }));
-
+  // fetch saved history
+  const handleViewHistory = async () => {
     setLoading(true);
     try {
-      // calculate
+      const res = await fetch('/api/GetCo2', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify([])
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setResults(await res.json());
+      showToast('Dine gemte beregninger er hentet');
+    } catch (e) {
+      showToast(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // calculate+save with quota enforcement
+  const handleCalculateAndSave = async () => {
+    if (!validate()) return;
+    if (quota.Plan==='free' && quota.CountThisMonth>=5) {
+      return showToast('Gratis-bruger har nået 5 beregninger i denne måned. Opgrader for flere.');
+    }
+    const payload = rows.map(r=>({
+      from_location:r.from, to_location:r.to,
+      mode:r.mode, weight_kg:Number(r.weight)||0,
+      eu:r.eu, state:r.state.trim().toLowerCase()
+    }));
+    setLoading(true);
+    try {
       const getRes = await fetch('/api/GetCo2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
       });
       if (!getRes.ok) throw new Error(await getRes.text());
       const calcResults = await getRes.json();
       setResults(calcResults);
 
-      // save
       await fetch('/api/SaveCo2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ results: calcResults }),
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ results: calcResults })
       });
 
-      // optimistic quota increment
-      setQuota(q => ({ ...q, CountThisMonth: q.CountThisMonth + 1 }));
-
+      // optimistic update
+      setQuota(q=>({ ...q, CountThisMonth: q.CountThisMonth+1 }));
       showToast('Beregnet og gemt!');
-    } catch (err) {
-      showToast(err.message);
+    } catch (e) {
+      showToast(e.message);
     } finally {
       setLoading(false);
       setFileLoading(false);
@@ -253,29 +196,28 @@ export default function App() {
 
   // file upload handler
   const handleFileUpload = e => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files[0]; if (!file) return;
     setFileLoading(true);
     const ext = file.name.split('.').pop().toLowerCase();
     const reader = new FileReader();
 
-    reader.onload = async evt => {
+    reader.onload = async ev => {
       let parsed = [];
       try {
         if (/\.(xlsx|xls)$/i.test(file.name)) {
-          const data = new Uint8Array(evt.target.result);
-          const wb = XLSX.read(data, { type: 'array' });
-          parsed = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+          const data = new Uint8Array(ev.target.result);
+          const wb   = XLSX.read(data,{type:'array'});
+          parsed     = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
         } else if (/\.csv$/i.test(file.name)) {
-          const text = evt.target.result;
+          const text  = ev.target.result;
           const lines = text.trim().split('\n');
-          const keys = lines[0].split(',').map(h => h.trim());
-          parsed = lines.slice(1).map(row => {
-            const vals = row.split(',').map(v => v.trim());
-            return Object.fromEntries(keys.map((k,i) => [k, vals[i]]));
+          const keys  = lines[0].split(',').map(h=>h.trim());
+          parsed      = lines.slice(1).map(row=>{
+            const vals = row.split(',').map(v=>v.trim());
+            return Object.fromEntries(keys.map((k,i)=>[k, vals[i]]));
           });
         } else {
-          parsed = JSON.parse(evt.target.result);
+          parsed = JSON.parse(ev.target.result);
           if (!Array.isArray(parsed)) throw new Error('JSON must be an array');
         }
       } catch (err) {
@@ -294,13 +236,13 @@ export default function App() {
         return;
       }
 
-      const payload = parsed.map(r => ({
-        from_location: r.from_location || r.from || r.origin,
-        to_location:   r.to_location   || r.to   || r.destination,
-        mode:          r.mode         || r.transport,
-        weight_kg:     Number(r.weight_kg || r.weight) || 0,
-        eu:            String(r.eu).toLowerCase() === 'yes' || r.eu === true,
-        state:         (r.state || r.state_code || '').toLowerCase(),
+      const payload = parsed.map(r=>({
+        from_location:r.from_location||r.from||r.origin,
+        to_location:  r.to_location  ||r.to  ||r.destination,
+        mode:         r.mode         ||r.transport,
+        weight_kg:    Number(r.weight_kg||r.weight)||0,
+        eu:           String(r.eu).toLowerCase()==='yes'||r.eu===true,
+        state:        (r.state||r.state_code||'').toLowerCase()
       }));
 
       calculate(payload);
@@ -308,10 +250,10 @@ export default function App() {
     };
 
     if (/\.(xlsx|xls)$/i.test(file.name)) reader.readAsArrayBuffer(file);
-    else reader.readAsText(file);
+    else                                   reader.readAsText(file);
   };
 
-  // download or print report
+  // download or print
   const downloadReport = () => {
     if (!results.length) {
       showToast('No results to download');
@@ -320,30 +262,28 @@ export default function App() {
     if (['csv','xlsx'].includes(format)) {
       const wsData = [
         ['From','Used From','To','Used To','Mode','Distance','CO₂ (kg)','Error'],
-        ...results.map(r => [
+        ...results.map(r=>[
           r.from_input, r.from_used,
           r.to_input,   r.to_used,
           r.mode,       r.distance_km,
-          r.co2_kg,     r.error || ''
+          r.co2_kg,     r.error||''
         ]),
       ];
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Results');
-      const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/octet-stream' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      const ws   = XLSX.utils.aoa_to_sheet(wsData);
+      const wb   = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'Results');
+      const wbout= XLSX.write(wb,{bookType:format,type:'array'});
+      const blob = new Blob([wbout],{type:'application/octet-stream'});
+      const a    = document.createElement('a');
+      a.href     = URL.createObjectURL(blob);
       a.download = `co2-results.${format}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
     } else {
-      const win = window.open('', '_blank');
+      const win = window.open('','_blank');
       win.document.write(`
-<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>CO₂ Report</title>
-<style>
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>CO₂ Report</title><style>
   body{font-family:'Segoe UI',sans-serif;margin:40px;position:relative}
   .watermark{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);
     font-size:120px;color:rgba(0,64,128,0.08);user-select:none}
@@ -355,48 +295,42 @@ export default function App() {
   footer{margin-top:40px;font-size:12px;text-align:center;color#888}
 </style></head><body>
   <div class="watermark">CarbonRoute</div>
-  <header><h1>CO₂ Transport Report</h1>
-    <p>${new Date().toLocaleDateString()}</p></header>
+  <header><h1>CO₂ Transport Report</h1><p>${new Date().toLocaleDateString()}</p></header>
   <table><thead><tr>
     <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
     <th>Mode</th><th>Distance</th><th>CO₂ (kg)</th><th>Error</th>
   </tr></thead><tbody>
-  ${results.map(r => `
+  ${results.map(r=>`
     <tr>
       <td>${r.from_input}</td><td>${r.from_used}</td>
       <td>${r.to_input}</td><td>${r.to_used}</td>
       <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
       <td>${r.error||''}</td>
     </tr>`).join('')}
-  </tbody></table>
-  <footer>© ${new Date().getFullYear()} CarbonRoute</footer>
-</body></html>`);
+  </tbody></table><footer>© ${new Date().getFullYear()} CarbonRoute</footer></body></html>`);
       win.document.close();
-      win.focus();
       win.print();
     }
   };
 
-  // Dummy data for statistics chart
+  // dummy stats
   const statsData = [
-    { name: 'Jan', emissions: 400 },
-    { name: 'Feb', emissions: 320 },
-    { name: 'Mar', emissions: 450 },
-    { name: 'Apr', emissions: 380 },
-    { name: 'May', emissions: 500 },
-    { name: 'Jun', emissions: 430 },
+    { name:'Jan', emissions:400 },
+    { name:'Feb', emissions:320 },
+    { name:'Mar', emissions:450 },
+    { name:'Apr', emissions:380 },
+    { name:'May', emissions:500 },
+    { name:'Jun', emissions:430 },
   ];
 
   return (
     <>
-      {/* Login prompt */}
-      <Modal show={showLoginModal} onHide={() => setShowLoginModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Log ind for at prøve gratis</Modal.Title>
-        </Modal.Header>
+      {/* Login modal */}
+      <Modal show={showLoginModal} onHide={()=>setShowLoginModal(false)} centered>
+        <Modal.Header closeButton><Modal.Title>Log ind for at prøve gratis</Modal.Title></Modal.Header>
         <Modal.Body>
           <p>Log ind med din Microsoft-konto for at prøve vores CO₂-calculator gratis.</p>
-          <Button variant="primary" onClick={() => window.location.href = '/.auth/login/aad?post_login_redirect=/'}>
+          <Button variant="primary" onClick={()=>window.location.href='/.auth/login/aad?post_login_redirect=/'}>
             Log ind med Microsoft
           </Button>
         </Modal.Body>
@@ -406,19 +340,19 @@ export default function App() {
       <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
         <Container fluid>
           <Navbar.Brand className="d-flex align-items-center">
-            <img src={logo} alt="CarbonRoute" height="60" className="me-3"/> 
+            <img src={logo} alt="CarbonRoute" height="60" className="me-3"/>
             <span className="h4 mb-0">CarbonRoute ESG CO₂ Dashboard</span>
           </Navbar.Brand>
           <Nav className="ms-auto d-flex align-items-center">
             {user ? (
               <>
                 <span className="me-3">Hello, {user.userDetails}</span>
-                <Button variant="outline-light" size="sm" onClick={() => window.location.href='/.auth/logout'}>
+                <Button variant="outline-light" size="sm" onClick={()=>window.location.href='/.auth/logout'}>
                   Logout
                 </Button>
               </>
             ) : (
-              <Button variant="outline-light" size="sm" onClick={() => setShowLoginModal(true)}>
+              <Button variant="outline-light" size="sm" onClick={()=>setShowLoginModal(true)}>
                 Login
               </Button>
             )}
@@ -430,23 +364,15 @@ export default function App() {
       <header className="hero bg-primary text-white text-center py-5">
         <Container>
           <h1 className="display-4 fw-bold">Mål. Reducér. Rapportér.</h1>
-          <p className="lead mb-4">Nem CO₂-beregning for transport i overensstemmelse med EU's ESG-krav — vej, sø og luft.</p>
-
+          <p className="lead mb-4">
+            Nem CO₂-beregning for transport i overensstemmelse med EU's ESG-krav — vej, sø og luft.
+          </p>
           {user ? (
-            <Button
-              variant="light"
-              size="lg"
-              className="me-2"
-              onClick={handleViewHistory}
-              disabled={loading}
-            >
-              {loading
-                ? <><Spinner size="sm" className="me-1"/>Henter…</>
-                : 'Vis beregninger'
-              }
+            <Button variant="light" size="lg" className="me-2" onClick={handleViewHistory} disabled={loading}>
+              {loading ? <><Spinner size="sm" className="me-1"/>Henter…</> : 'Vis beregninger'}
             </Button>
           ) : (
-            <Button variant="light" size="lg" className="me-2" onClick={() => setShowLoginModal(true)}>
+            <Button variant="light" size="lg" className="me-2" onClick={()=>setShowLoginModal(true)}>
               Prøv Gratis
             </Button>
           )}
@@ -461,10 +387,8 @@ export default function App() {
             {/* Upload & Controls */}
             <div className="mb-3 d-flex flex-wrap align-items-center">
               <Form.Control
-                type="file"
-                accept=".csv,.json,.xlsx,.xls"
-                onChange={handleFileUpload}
-                id="file-upload"
+                type="file" accept=".csv,.json,.xlsx,.xls"
+                onChange={handleFileUpload} id="file-upload"
                 style={{ display:'none' }}
               />
               <Button as="label" htmlFor="file-upload" variant="outline-success" className="me-2 mb-2">
@@ -496,22 +420,20 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r,i) => (
-                    <tr key={i} className={r.error ? 'table-danger' : ''}>
-                      <td><Form.Control placeholder="City or Code" value={r.from} onChange={e => handleChange(i,'from',e.target.value)}/></td>
-                      <td><Form.Control placeholder="City or Code" value={r.to} onChange={e => handleChange(i,'to',e.target.value)}/></td>
+                  {rows.map((r,i)=>(
+                    <tr key={i} className={r.error?'table-danger':''}>
+                      <td><Form.Control placeholder="City or Code" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)}/></td>
+                      <td><Form.Control placeholder="City or Code" value={r.to}   onChange={e=>handleChange(i,'to',e.target.value)}/></td>
                       <td>
-                        <Form.Select value={r.mode} onChange={e => handleChange(i,'mode',e.target.value)}>
-                          <option value="road">Road</option>
-                          <option value="air">Air</option>
-                          <option value="sea">Sea</option>
+                        <Form.Select value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}>
+                          <option value="road">Road</option><option value="air">Air</option><option value="sea">Sea</option>
                         </Form.Select>
                       </td>
-                      <td><Form.Control type="number" placeholder="0" value={r.weight} onChange={e => handleChange(i,'weight',e.target.value)}/></td>
-                      <td className="text-center"><Form.Check checked={r.eu} onChange={e => handleChange(i,'eu',e.target.checked)}/></td>
-                      <td><Form.Control placeholder="State-code" value={r.state} onChange={e => handleChange(i,'state',e.target.value)}/></td>
+                      <td><Form.Control type="number" placeholder="0" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)}/></td>
+                      <td className="text-center"><Form.Check checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)}/></td>
+                      <td><Form.Control placeholder="State" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)}/></td>
                       <td>{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/>{r.error}</Badge>}</td>
-                      <td className="text-center"><Button variant="outline-danger" size="sm" onClick={() => removeRow(i)}><FaTrash/></Button></td>
+                      <td className="text-center"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash/></Button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -520,24 +442,22 @@ export default function App() {
 
             {/* Mobile stacked */}
             <div className="d-block d-md-none">
-              {rows.map((r,i) => (
+              {rows.map((r,i)=>(
                 <Card key={i} className="mb-3 brand-card-mobile">
                   <Card.Body>
-                    <Form.Control className="mb-2" placeholder="From" value={r.from} onChange={e => handleChange(i,'from',e.target.value)}/>
-                    <Form.Control className="mb-2" placeholder="To"   value={r.to}   onChange={e => handleChange(i,'to',e.target.value)}/>
-                    <Form.Select className="mb-2" value={r.mode} onChange={e => handleChange(i,'mode',e.target.value)}>
-                      <option value="road">Road</option>
-                      <option value="air">Air</option>
-                      <option value="sea">Sea</option>
+                    <Form.Control className="mb-2" placeholder="From" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)}/>
+                    <Form.Control className="mb-2" placeholder="To"   value={r.to}   onChange={e=>handleChange(i,'to',e.target.value)}/>
+                    <Form.Select className="mb-2" value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}>
+                      <option value="road">Road</option><option value="air">Air</option><option value="sea">Sea</option>
                     </Form.Select>
-                    <Form.Control className="mb-2" type="number" placeholder="Weight (kg)" value={r.weight} onChange={e => handleChange(i,'weight',e.target.value)}/>
+                    <Form.Control className="mb-2" type="number" placeholder="Weight (kg)" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)}/>
                     <div className="d-flex align-items-center mb-2">
-                      <Form.Check className="me-2" checked={r.eu} onChange={e => handleChange(i,'eu',e.target.checked)}/>
+                      <Form.Check className="me-2" checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)}/>
                       <small>In EU</small>
                     </div>
-                    <Form.Control className="mb-2" placeholder="State" value={r.state} onChange={e => handleChange(i,'state',e.target.value)}/>
+                    <Form.Control className="mb-2" placeholder="State" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)}/>
                     {r.error && <Badge bg="danger" className="d-block mb-2">{r.error}</Badge>}
-                    <div className="text-end"><Button variant="outline-danger" size="sm" onClick={() => removeRow(i)}><FaTrash/></Button></div>
+                    <div className="text-end"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash/></Button></div>
                   </Card.Body>
                 </Card>
               ))}
@@ -555,7 +475,7 @@ export default function App() {
         </Card>
 
         {/* Results Table */}
-        {results.length > 0 && (
+        {results.length>0 && (
           <Card className="shadow-sm mt-4">
             <Card.Body>
               <Card.Title className="text-success">Results</Card.Title>
@@ -567,8 +487,8 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r,i) => (
-                    <tr key={i} className={r.error ? 'table-danger' : ''}>
+                  {results.map((r,i)=>(
+                    <tr key={i} className={r.error?'table-danger':''}>
                       <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
                       <td>{r.to_input} <small className="text-muted">({r.to_used})</small></td>
                       <td className="text-capitalize">{r.mode}</td>
@@ -581,7 +501,7 @@ export default function App() {
               </Table>
             </Card.Body>
           </Card>
-        )}
+        ))}
       </Container>
 
       {/* Feature Cards */}
