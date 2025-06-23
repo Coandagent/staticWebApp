@@ -330,66 +330,88 @@ const handleViewHistory = async () => {
   };
 
   // Download / Print report
-  const downloadReport = () => {
-    if (!results.length) {
-      showToast('No results to download');
-      return;
-    }
-    if (['csv','xlsx'].includes(format)) {
-      const wsData = [
-        ['From','Used From','To','Used To','Mode','Distance','CO₂ (kg)','Error'],
-        ...results.map(r => [
-          r.from_input, r.from_used,
-          r.to_input, r.to_used,
-          r.mode, r.distance_km,
-          r.co2_kg, r.error || ''
-        ])
-      ];
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Results');
-      const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/octet-stream' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `co2-results.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } else {
-      const win = window.open('', '_blank');
-      win.document.write(`
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>CO₂ Report</title><style>
-  body{font-family:'Segoe UI',sans-serif;margin:40px;position:relative}
-  .watermark{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);
-    font-size:120px;color:rgba(0,64,128,0.08);user-select:none}
-  header{text-align:center;margin-bottom:40px}
-  header h1{color:#004080;font-size:28px;margin:0}
-  table{width:100%;border-collapse:collapse;margin-top:20px}
-  th{background:#004080;color:#fff;padding:10px;text-align:left}
-  td{border:1px solid #ddd;padding:8px}
-  footer{margin-top:40px;font-size:12px;text-align:center;color#888}
-</style></head><body>
-  <div class="watermark">CarbonRoute</div>
-  <header><h1>CO₂ Transport Report</h1><p>${new Date().toLocaleDateString()}</p></header>
-  <table><thead><tr>
-    <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
-    <th>Mode</th><th>Distance</th><th>CO₂ (kg)</th><th>Error</th>
-  </tr></thead><tbody>
-  ${results.map(r => `
-    <tr>
-      <td>${r.from_input}</td><td>${r.from_used}</td>
-      <td>${r.to_input}</td><td>${r.to_used}</td>
-      <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td><td>${r.error||''}</td>
-    </tr>`).join('')}
-  </tbody></table>
-  <footer>© ${new Date().getFullYear()} CarbonRoute</footer>
-</body></html>`);
-      win.document.close();
-      win.focus();
-      win.print();
-    }
-  };
+ // ——————————————————————————————————————————————————————————————
+// Replace your entire downloadReport with this:
+
+const downloadReport = () => {
+  // 1) Choose which data to export:
+  const dataToExport =
+    view === 'history' && selectedGroup
+      ? historyGroups[selectedGroup.year][selectedGroup.month]
+      : results;
+
+  if (!dataToExport || dataToExport.length === 0) {
+    showToast('No results to download');
+    return;
+  }
+
+  // 2) CSV / XLSX path
+  if (['csv','xlsx'].includes(format)) {
+    // build header + rows
+    const wsData = [
+      ['From','To','Mode','Distance','CO₂ (kg)'],
+      ...dataToExport.map(r => [
+        r.from_input ?? r.from_location,
+        r.to_input   ?? r.to_location,
+        r.mode,
+        r.distance_km,
+        r.co2_kg
+      ])
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Report');
+    const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `co2-report.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+  // 3) PDF/print path
+  } else {
+    const win = window.open('', '_blank');
+    win.document.write(`
+      <!doctype html>
+      <html><head>
+        <meta charset="utf-8">
+        <title>CO₂ Report</title>
+        <style>
+          body { font-family: sans-serif; margin: 40px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+          th { background: #004080; color: white; }
+        </style>
+      </head><body>
+        <h1>CO₂ Report</h1>
+        <p>${new Date().toLocaleDateString()}</p>
+        <table>
+          <thead>
+            <tr>
+              <th>From</th><th>To</th><th>Mode</th><th>Distance</th><th>CO₂ (kg)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dataToExport.map(r => `
+              <tr>
+                <td>${r.from_input ?? r.from_location}</td>
+                <td>${r.to_input   ?? r.to_location}</td>
+                <td>${r.mode}</td>
+                <td>${r.distance_km}</td>
+                <td>${r.co2_kg}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body></html>
+    `);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
+};
 
   // Dummy stats for chart
   const statsData = [
@@ -579,9 +601,7 @@ const handleViewHistory = async () => {
       </Container>
 
 
-    {/* History drill-down view */}
-// … right after </Container> of your calculator/results …
-
+{/* History drill-down view */}
 {view === 'history' && (
   <Container className="my-5">
     <Button variant="secondary" onClick={() => setView('calculator')}>
@@ -642,7 +662,6 @@ const handleViewHistory = async () => {
     )}
   </Container>
 )}
-
 
 
 
