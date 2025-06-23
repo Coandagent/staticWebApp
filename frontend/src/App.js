@@ -11,22 +11,7 @@ import { FaUserPlus, FaRoute, FaChartLine, FaHandshake, FaTruck, FaShip, FaPlane
 import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
 
-import {
-  Container,
-  Navbar,
-  Nav,
-  Button,
-  Form,
-  Table,
-  Card,
-  Dropdown,
-  Row,
-  Col,
-  Spinner,
-  Toast,
-  ToastContainer,
-  Badge,
-} from 'react-bootstrap';
+import { Container, Navbar, Nav, Button, Form, Table, Card, Dropdown, Row, Col, Carousel, Spinner, Toast, ToastContainer, Badge } from 'react-bootstrap';
 
 import {
   FaUpload,
@@ -421,38 +406,38 @@ export default function App() {
 {/* --- Sliding User Journey & Supplier Benefits Carousel --- */}
 <Container className="my-5">
   <h2 className="fw-bold text-center mb-4">Din rejse som leverandør</h2>
-  <Carousel controls={true} indicators={false} interval={null} className="pb-4">
-    {[ 
-      // define your steps
-      { icon: <FaUserPlus size={48} className="text-success"/>, title: 'Opret konto', desc: 'Gratis konto på 30 sekunder – kom i gang uden binding.' },
-      { icon: <FaRoute size={48} className="text-success"/>, title: 'Indtast data', desc: 'Vælg transporttype, indtast rute & vægt – vi guider dig.' },
-      { icon: <FaChartLine size={48} className="text-success"/>, title: 'Se resultater', desc: 'Interaktive grafer & tal for CO₂-udledning.' },
-      { icon: <FaHandshake size={48} className="text-success"/>, title: 'Del med kunder', desc: 'Share PDF/Excel med eget logo – styrk tilliden.' },
-      { icon: <FaTruck size={48} className="text-success"/>, title: 'Optimer ruter', desc: 'Identificér CO₂-tunge ruter & reducer omkostninger.' },
-      { icon: <FaShip size={48} className="text-success"/>, title: 'Multimodal', desc: 'Overblik over vej, skib & luft i ét dashboard.' },
-      { icon: <FaPlane size={48} className="text-success"/>, title: 'Skaler til Pro', desc: 'White-label rapporter, API-adgang & support.' },
-    ].reduce((slides, step, i, arr) => {
-      // group into pairs
-      if (i % 2 === 0) slides.push(arr.slice(i, i + 2));
-      return slides;
-    }, [] as any[]).map((pair, idx) => (
-      <Carousel.Item key={idx}>
-        <Row className="justify-content-center g-4">
-          {pair.map((step, j) => (
-            <Col xs={12} md={6} key={j}>
-              <Card className="text-center border-0 shadow-sm p-4">
-                {step.icon}
-                <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title>
-                <Card.Text className="text-muted">{step.desc}</Card.Text>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      </Carousel.Item>
-    ))}
+  <Carousel controls indicators={false} interval={null} className="pb-4">
+    {[
+      { icon: <FaUserPlus size={48} className="text-success" />, title: 'Opret konto',   desc: 'Gratis konto på 30 sekunder – kom i gang uden binding.' },
+      { icon: <FaRoute      size={48} className="text-success" />, title: 'Indtast data', desc: 'Vælg transporttype, indtast rute & vægt – vi guider dig.' },
+      { icon: <FaChartLine  size={48} className="text-success" />, title: 'Se resultater',desc: 'Interaktive grafer & tal for CO₂-udledning.' },
+      { icon: <FaHandshake  size={48} className="text-success" />, title: 'Del med kunder',desc: 'Share PDF/Excel med eget logo – styrk tilliden.' },
+      { icon: <FaTruck      size={48} className="text-success" />, title: 'Optimer ruter', desc: 'Identificér CO₂-tunge ruter & reducer omkostninger.' },
+      { icon: <FaShip       size={48} className="text-success" />, title: 'Multimodal',     desc: 'Overblik over vej, skib & luft i ét dashboard.' },
+      { icon: <FaPlane      size={48} className="text-success" />, title: 'Skaler til Pro', desc: 'White-label rapporter, API-adgang & support.' },
+    ]
+      // group into slides of two items each
+      .reduce((slides, step, i, arr) => {
+        if (i % 2 === 0) slides.push(arr.slice(i, i + 2));
+        return slides;
+      }, [])
+      .map((pair, idx) => (
+        <Carousel.Item key={idx}>
+          <Row className="justify-content-center g-4">
+            {pair.map((step, j) => (
+              <Col xs={12} md={6} key={j}>
+                <Card className="text-center border-0 shadow-sm p-4">
+                  {step.icon}
+                  <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title>
+                  <Card.Text className="text-muted">{step.desc}</Card.Text>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Carousel.Item>
+      ))}
   </Carousel>
 </Container>
-
 
 
       {/* Calculator Section */}
