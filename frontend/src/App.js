@@ -630,9 +630,10 @@ const downloadReport = () => {
       </>
     ) : (
       <>
-        <Button variant="link" onClick={() => setSelectedGroup(null)}>
-          ← Back to overview
-        </Button>
+
+   <Button variant="secondary" onClick={() => setSelectedGroup(null)}>
+      ← Back to overview
+    </Button>
         <h3 className="mt-3">
           {selectedGroup.month} {selectedGroup.year}
         </h3>
