@@ -1,4 +1,3 @@
-// api/SaveCo2/function.json
 {
   "bindings": [
     {
@@ -12,6 +11,13 @@
       "type":      "http",
       "direction": "out",
       "name":      "res"
+    },
+    {
+      "type":      "table",
+      "direction": "out",
+      "name":      "outputTable",
+      "tableName": "co2Result",
+      "connection": "AzureWebJobsStorage"
     }
   ]
 }
