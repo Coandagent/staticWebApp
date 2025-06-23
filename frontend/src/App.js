@@ -368,21 +368,28 @@ return (
         <Container>
           <h1 className="display-4 fw-bold">Mål. Reducér. Rapportér.</h1>
           <p className="lead mb-4">Nem CO₂-beregning for transport i overensstemmelse med EU's ESG-krav — vej, sø og luft.</p>
-<Button
-  variant="light"
-  size="lg"
-  className="me-2"
-  onClick={() => {
-    if (user) {
-      showToast('Du er allerede logget ind');
-    } else {
-      setShowLoginModal(true);
-    }
-  }}
->
-  Prøv Gratis
-</Button>
-
+{user ? (
+  <Button
+    variant="light"
+    size="lg"
+    className="me-2"
+    onClick={() => {
+      // TODO: replace with actual navigation or modal to show saved calculations
+      showToast('Her vises dine gemte beregninger');
+    }}
+  >
+    Vis beregninger
+  </Button>
+) : (
+  <Button
+    variant="light"
+    size="lg"
+    className="me-2"
+    onClick={() => setShowLoginModal(true)}
+  >
+    Prøv Gratis
+  </Button>
+)}
  </Container>
       </header>
 
