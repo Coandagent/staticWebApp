@@ -112,3 +112,14 @@ body {
 .brand-footer .text-muted {
   color: #666 !important;
 }
+
+/* --- Override Bootstrap Primary Utilities & Hero --- */
+.bg-primary {
+  background-color: var(--brand-green) !important;
+}
+.text-primary {
+  color: var(--brand-green) !important;
+}
+.hero {
+  background-color: var(--brand-green) !important;
+}
