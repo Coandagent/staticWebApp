@@ -129,6 +129,11 @@ export default function App() {
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast] = useState({ show:false, message:'' });
   const [showLoginModal, setShowLoginModal] = useState(false);
+// above everything in App():
+const [view, setView] = useState('calculator');         // "calculator" or "history"
+const [historyGroups, setHistoryGroups] = useState({}); // { [year]: { [month]: [entries]}}
+const [selectedGroup, setSelectedGroup] = useState(null);
+// where selectedGroup is either null or { year, month }
 
   const showToast = message => {
     setToast({ show:true, message });
@@ -172,24 +177,39 @@ export default function App() {
   };
 
   // Fetch saved history
-  const handleViewHistory = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/GetCo2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([])
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      setResults(data);
-      showToast('Dine gemte beregninger er hentet');
-    } catch (e) {
-      showToast(e.message);
-    } finally {
-      setLoading(false);
+const handleViewHistory = async () => {
+  setLoading(true);
+  try {
+    const res = await fetch('/api/GetCo2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify([]),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+
+    // 2a) Group by year/month
+    const groups = {};
+    for (const entry of data) {
+      // use a timestamp field or rowKey
+      const ts = entry.timestamp || entry.rowKey || new Date().toISOString();
+      const d  = new Date(ts);
+      const yr = d.getFullYear();
+      const mo = d.toLocaleString('default', { month: 'long' });
+      groups[yr]         = groups[yr] || {};
+      groups[yr][mo]     = groups[yr][mo] || [];
+      groups[yr][mo].push(entry);
     }
-  };
+
+    setHistoryGroups(groups);
+    setSelectedGroup(null);
+    setView('history');
+  } catch (e) {
+    showToast(e.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Calculate & Save
   const handleCalculateAndSave = async () => {
@@ -557,6 +577,73 @@ export default function App() {
           </Card>
         )}
       </Container>
+
+
+    {/* History drill-down view */}
+    {view === 'history' && (
+      <Container className="my-5">
+        <Button variant="secondary" onClick={() => setView('calculator')}>
+          ← Back to Calculator
+        </Button>
+
+        {!selectedGroup && (
+          <>
+            <h2 className="mt-4">Saved Calculations</h2>
+            {Object.entries(historyGroups).map(([year, months]) => (
+              <div key={year} className="mb-3">
+                <h4>{year}</h4>
+                {Object.keys(months).map(month => (
+                  <Badge
+                    key={month}
+                    bg="primary"
+                    className="me-2 mb-1"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setSelectedGroup({ year, month })}
+                  >
+                    {month} ({months[month].length})
+                  </Badge>
+                ))}
+              </div>
+            ))}
+          </>
+        )}
+
+        {selectedGroup && (
+          <>
+            <Button variant="link" onClick={() => setSelectedGroup(null)}>
+              ← Back to overview
+            </Button>
+            <h3 className="mt-3">
+              {selectedGroup.month} {selectedGroup.year}
+            </h3>
+            <Table striped bordered hover responsive className="mt-2">
+              <thead>
+                <tr>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Mode</th>
+                  <th>Distance</th>
+                  <th>CO₂</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyGroups[selectedGroup.year][selectedGroup.month].map((r, i) => (
+                  <tr key={i}>
+                    <td>{r.from_input}</td>
+                    <td>{r.to_input}</td>
+                    <td>{r.mode}</td>
+                    <td>{r.distance_km}</td>
+                    <td>{r.co2_kg}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </>
+        )}
+      </Container>
+    )}
+
+
 
       {/* Feature Cards */}
       <Container className="my-5" id="features">
