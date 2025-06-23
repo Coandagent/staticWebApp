@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { Accordion } from 'react-bootstrap';
 import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
 
@@ -416,6 +417,44 @@ export default function App() {
           </Col>
         </Row>
       </Container>
+
+
+{/* --- User Journey & Supplier Opportunities --- */}
+<Container className="my-5" id="supplier-opportunities">
+  <h2 className="fw-bold text-center mb-4">Brugerrejse & Leverandør-muligheder</h2>
+  <Accordion defaultActiveKey="0">
+    <Accordion.Item eventKey="0">
+      <Accordion.Header>1. Opret konto og log ind</Accordion.Header>
+      <Accordion.Body>
+        Som leverandør kan du hurtigt åbne en gratis konto, indtaste dine transportdata og se CO₂-beregninger i realtid.
+      </Accordion.Body>
+    </Accordion.Item>
+    <Accordion.Item eventKey="1">
+      <Accordion.Header>2. Indtast transportdata</Accordion.Header>
+      <Accordion.Body>
+        Vælg transporttype, indtast rute og vægt – platformen guider dig trin for trin og sikrer præcis dataindsamling.
+      </Accordion.Body>
+    </Accordion.Item>
+    <Accordion.Item eventKey="2">
+      <Accordion.Header>3. Analysér og rapportér</Accordion.Header>
+      <Accordion.Body>
+        Se grafer og detaljerede resultater, download rapporter til kunder og dokumentér overholdelse af ESG-krav.
+      </Accordion.Body>
+    </Accordion.Item>
+    <Accordion.Item eventKey="3">
+      <Accordion.Header>4. Fordele som leverandør</Accordion.Header>
+      <Accordion.Body>
+        <ul>
+          <li>Styrk dit CO₂-regnskab over for kunder</li>
+          <li>Vis transparens og øg troværdighed i din forsyningskæde</li>
+          <li>Identificér optimeringsmuligheder og reducer omkostninger</li>
+          <li>Lever professionelle rapporter med eget logo (Pro/Enterprise)</li>
+        </ul>
+      </Accordion.Body>
+    </Accordion.Item>
+  </Accordion>
+</Container>
+
 
       {/* Calculator Section */}
       <Container className="my-5">
