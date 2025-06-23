@@ -2,22 +2,15 @@
   "bindings": [
     {
       "authLevel": "anonymous",
-      "type":      "httpTrigger",
+      "type": "httpTrigger",
       "direction": "in",
-      "name":      "req",
-      "methods":  ["post"]
+      "name": "req",
+      "methods": ["post"]
     },
     {
-      "type":      "http",
+      "type": "http",
       "direction": "out",
-      "name":      "res"
-    },
-    {
-      "type":      "table",
-      "direction": "out",
-      "name":      "outputTable",
-      "tableName": "co2Result",
-      "connection": "AzureWebJobsStorage"
+      "name": "res"
     }
   ]
 }

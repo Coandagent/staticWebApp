@@ -119,6 +119,9 @@ export default function App() {
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast]             = useState({ show:false, message:'' });
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
 
   const showToast = message => {
     setToast({ show:true, message });
@@ -171,6 +174,24 @@ export default function App() {
       setFileLoading(false);
     }
   };
+  // Fetch saved calculations for this user
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch('/api/GetCo2', { method: 'POST' });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setHistory(data);
+    } catch (err) {
+      showToast(err.message);
+    }
+  };
+
+  // Handler to open the history modal
+  const handleViewHistory = () => {
+    setShowHistoryModal(true);
+    fetchHistory();
+  };
+
 
  // ← ADD THIS NEW FUNCTION ↓
   const handleCalculateAndSave = async () => {
@@ -396,17 +417,41 @@ return (
         <Container>
           <h1 className="display-4 fw-bold">Mål. Reducér. Rapportér.</h1>
           <p className="lead mb-4">Nem CO₂-beregning for transport i overensstemmelse med EU's ESG-krav — vej, sø og luft.</p>
+
 {user ? (
   <Button
     variant="light"
     size="lg"
     className="me-2"
-    onClick={() => {
-      // TODO: replace with actual navigation or modal to show saved calculations
-      showToast('Her vises dine gemte beregninger');
+    onClick={async () => {
+      // 1) show spinner  
+      setLoading(true);
+      try {
+        // 2) fetch saved CO₂ entries for this user
+        const res = await fetch('/api/GetCo2', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify([])    // no payload needed for history
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const history = await res.json();
+
+        // 3) render them in the results table
+        setResults(history);
+
+        showToast('Dine gemte beregninger er hentet');
+      } catch (err) {
+        showToast(`Fejl: ${err.message}`);
+      } finally {
+        setLoading(false);
+      }
     }}
+    disabled={loading}
   >
-    Vis beregninger
+    {loading
+      ? <><Spinner size="sm" className="me-1"/>Henter…</>
+      : 'Vis beregninger'
+    }
   </Button>
 ) : (
   <Button
@@ -418,6 +463,9 @@ return (
     Prøv Gratis
   </Button>
 )}
+
+
+
  </Container>
       </header>
 
