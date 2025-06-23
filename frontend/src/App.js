@@ -371,114 +371,8 @@ return (
 <Button variant="light" size="lg" className="me-2" onClick={() => setShowLoginModal(true)}>
 Prøv Gratis
 </Button>
-          <Button variant="outline-light" size="lg">Book Demo</Button>
-        </Container>
+ </Container>
       </header>
-
-
-      {/* Feature Cards */}
-      <Container className="my-5" id="features">
-        <Row className="text-center mb-4">
-          <h2 className="fw-bold">Kernefunktioner</h2>
-          <p className="text-muted">Alt du behøver til CO₂-rapportering</p>
-        </Row>
-        <Row>
-          <Col md={4} className="mb-4">
-            <Card className="h-100 shadow-sm border-0">
-              <Card.Body>
-                <Card.Title className="fw-bold text-primary">Bruger-venlig Input</Card.Title>
-                <Card.Text className="text-muted">
-                  Indtast start- og slutdestination med autocomplete, vægt og transporttype – vi guider dig!
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={4} className="mb-4">
-            <Card className="h-100 shadow-sm border-0">
-              <Card.Body>
-                <Card.Title className="fw-bold text-primary">Automatisk Beregning</Card.Title>
-                <Card.Text className="text-muted">
-                  Klik beregn, så bruger vi GHG-protokollen og opdaterede emissionsfaktorer for præcise resultater.
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={4} className="mb-4">
-            <Card className="h-100 shadow-sm border-0">
-              <Card.Body>
-                <Card.Title className="fw-bold text-primary">Rapporter & Eksport</Card.Title>
-                <Card.Text className="text-muted">
-                  Download rapporter i PDF/Excel eller del data med dit team direkte fra platformen.
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
-
-
-
-
-{/* --- Sliding User Journey & Supplier Benefits Carousel --- */}
-<Container className="my-5">
-  <h2 className="fw-bold text-center mb-4">Din rejse som leverandør</h2>
-  <Carousel
-    controls
-    indicators={false}
-    interval={null}
-    prevIcon={<FaChevronLeft size={32} className="text-success" />}
-    nextIcon={<FaChevronRight size={32} className="text-success" />}
-    className="pb-4"
-  >
-    {[
-      { icon: <FaUserPlus size={48} className="text-success" />, title: 'Opret konto',   desc: 'Gratis konto på 30 sekunder – kom i gang uden binding.' },
-      { icon: <FaRoute      size={48} className="text-success" />, title: 'Indtast data', desc: 'Vælg transporttype, indtast rute & vægt – vi guider dig.' },
-      { icon: <FaChartLine  size={48} className="text-success" />, title: 'Se resultater',desc: 'Interaktive grafer & tal for CO₂-udledning.' },
-      { icon: <FaHandshake  size={48} className="text-success" />, title: 'Del med kunder',desc: 'Share PDF/Excel med eget logo – styrk tilliden.' },
-      { icon: <FaTruck      size={48} className="text-success" />, title: 'Optimer ruter', desc: 'Identificér CO₂-tunge ruter & reducer omkostninger.' },
-      { icon: <FaShip       size={48} className="text-success" />, title: 'Multimodal',     desc: 'Overblik over vej, skib & luft i ét dashboard.' },
-      { icon: <FaPlane      size={48} className="text-success" />, title: 'Skaler til Pro', desc: 'White-label rapporter, API-adgang & support.' },
-    ]
-      .reduce((slides, step, i, arr) => {
-        if (i % 2 === 0) slides.push(arr.slice(i, i + 2));
-        return slides;
-      }, [])
-      .map((pair, idx) => (
-        <Carousel.Item key={idx}>
-          <Row className="justify-content-center g-4">
-            {pair.map((step, j) => (
-              <Col xs={12} md={6} key={j}>
-                <Card className="text-center border-0 shadow-sm p-4">
-                  {step.icon}
-                  <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title>
-                  <Card.Text className="text-muted">{step.desc}</Card.Text>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </Carousel.Item>
-      ))}
-  </Carousel>
-</Container>
-
-
-      {/* Statistics Section */}
-      <section className="py-5 bg-white">
-        <Container>
-          <h2 className="text-center mb-4">Månedlige Udsendelser</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={statsData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis label={{ value: 'kg CO₂', angle: -90, position: 'insideLeft' }}/>
-              <Tooltip />
-              <Line type="monotone" dataKey="emissions" stroke="#2a8f64" strokeWidth={3} dot={{ r: 5 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </Container>
-      </section>
-
-
 
 
       {/* Calculator Section */}
@@ -601,6 +495,111 @@ Prøv Gratis
           </Card>
         )}
       </Container>
+
+
+      {/* Feature Cards */}
+      <Container className="my-5" id="features">
+        <Row className="text-center mb-4">
+          <h2 className="fw-bold">Kernefunktioner</h2>
+          <p className="text-muted">Alt du behøver til CO₂-rapportering</p>
+        </Row>
+        <Row>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Bruger-venlig Input</Card.Title>
+                <Card.Text className="text-muted">
+                  Indtast start- og slutdestination med autocomplete, vægt og transporttype – vi guider dig!
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Automatisk Beregning</Card.Title>
+                <Card.Text className="text-muted">
+                  Klik beregn, så bruger vi GHG-protokollen og opdaterede emissionsfaktorer for præcise resultater.
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Rapporter & Eksport</Card.Title>
+                <Card.Text className="text-muted">
+                  Download rapporter i PDF/Excel eller del data med dit team direkte fra platformen.
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
+
+
+
+
+{/* --- Sliding User Journey & Supplier Benefits Carousel --- */}
+<Container className="my-5">
+  <h2 className="fw-bold text-center mb-4">Din rejse som leverandør</h2>
+  <Carousel
+    controls
+    indicators={false}
+    interval={null}
+    prevIcon={<FaChevronLeft size={32} className="text-success" />}
+    nextIcon={<FaChevronRight size={32} className="text-success" />}
+    className="pb-4"
+  >
+    {[
+      { icon: <FaUserPlus size={48} className="text-success" />, title: 'Opret konto',   desc: 'Gratis konto på 30 sekunder – kom i gang uden binding.' },
+      { icon: <FaRoute      size={48} className="text-success" />, title: 'Indtast data', desc: 'Vælg transporttype, indtast rute & vægt – vi guider dig.' },
+      { icon: <FaChartLine  size={48} className="text-success" />, title: 'Se resultater',desc: 'Interaktive grafer & tal for CO₂-udledning.' },
+      { icon: <FaHandshake  size={48} className="text-success" />, title: 'Del med kunder',desc: 'Share PDF/Excel med eget logo – styrk tilliden.' },
+      { icon: <FaTruck      size={48} className="text-success" />, title: 'Optimer ruter', desc: 'Identificér CO₂-tunge ruter & reducer omkostninger.' },
+      { icon: <FaShip       size={48} className="text-success" />, title: 'Multimodal',     desc: 'Overblik over vej, skib & luft i ét dashboard.' },
+      { icon: <FaPlane      size={48} className="text-success" />, title: 'Skaler til Pro', desc: 'White-label rapporter, API-adgang & support.' },
+    ]
+      .reduce((slides, step, i, arr) => {
+        if (i % 2 === 0) slides.push(arr.slice(i, i + 2));
+        return slides;
+      }, [])
+      .map((pair, idx) => (
+        <Carousel.Item key={idx}>
+          <Row className="justify-content-center g-4">
+            {pair.map((step, j) => (
+              <Col xs={12} md={6} key={j}>
+                <Card className="text-center border-0 shadow-sm p-4">
+                  {step.icon}
+                  <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title>
+                  <Card.Text className="text-muted">{step.desc}</Card.Text>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Carousel.Item>
+      ))}
+  </Carousel>
+</Container>
+
+
+      {/* Statistics Section */}
+      <section className="py-5 bg-white">
+        <Container>
+          <h2 className="text-center mb-4">Månedlige Udsendelser</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={statsData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis label={{ value: 'kg CO₂', angle: -90, position: 'insideLeft' }}/>
+              <Tooltip />
+              <Line type="monotone" dataKey="emissions" stroke="#2a8f64" strokeWidth={3} dot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Container>
+      </section>
+
+
 
       {/* Toast */}
       <ToastContainer position="bottom-end" className="p-3">
