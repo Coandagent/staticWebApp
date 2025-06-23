@@ -3,7 +3,6 @@
 /* --- Brand Variables & Resets --- */
 :root {
   --brand-green: #2a8f64;
-  --brand-blue:  #004080;
   --text-primary: #212529;
   --bg-light: #f9fdfc;
   --font-sans: 'Segoe UI', 'Ubuntu', sans-serif;
@@ -34,7 +33,7 @@ body {
 }
 
 .App-header {
-  background-color: #282c34;
+  background-color: var(--brand-green);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -45,7 +44,7 @@ body {
 }
 
 .App-link {
-  color: #61dafb;
+  color: var(--brand-green);
 }
 
 @keyframes App-logo-spin {
@@ -59,7 +58,7 @@ body {
 
 /* --- Navbar Branding --- */
 .brand-navbar {
-  background-color: var(--brand-blue) !important;
+  background-color: var(--brand-green) !important;
 }
 .brand-navbar .navbar-brand,
 .brand-navbar .nav-link {
@@ -71,7 +70,7 @@ body {
 }
 .brand-navbar .btn-outline-light:hover {
   background-color: #fff;
-  color: var(--brand-blue);
+  color: var(--brand-green);
 }
 
 /* --- Card & Table Styling --- */
