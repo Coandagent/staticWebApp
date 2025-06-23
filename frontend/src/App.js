@@ -11,7 +11,7 @@ import { FaUserPlus, FaRoute, FaChartLine, FaHandshake, FaTruck, FaShip, FaPlane
 import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
 
-import { Container, Navbar, Nav, Button, Form, Table, Card, Dropdown, Row, Col, Carousel, Spinner, Toast, ToastContainer, Badge } from 'react-bootstrap';
+import { Container, Navbar, Nav, Button, Form, Table, Card, Dropdown, Row, Col, Carousel, Spinner, Toast, ToastContainer, Badge, } from 'react-bootstrap';
 
 import {
   FaUpload,
@@ -19,6 +19,8 @@ import {
   FaDownload,
   FaTrash,
   FaExclamationCircle,
+  FaChevronLeft,
+  FaChevronRight,
 } from 'react-icons/fa';
 
 import * as XLSX from 'xlsx';
