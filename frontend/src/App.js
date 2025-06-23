@@ -349,6 +349,50 @@ export default function App() {
         </Container>
       </header>
 
+
+      {/* Feature Cards */}
+      <Container className="my-5" id="features">
+        <Row className="text-center mb-4">
+          <h2 className="fw-bold">Kernefunktioner</h2>
+          <p className="text-muted">Alt du behøver til CO₂-rapportering</p>
+        </Row>
+        <Row>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Bruger-venlig Input</Card.Title>
+                <Card.Text className="text-muted">
+                  Indtast start- og slutdestination med autocomplete, vægt og transporttype – vi guider dig!
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Automatisk Beregning</Card.Title>
+                <Card.Text className="text-muted">
+                  Klik beregn, så bruger vi GHG-protokollen og opdaterede emissionsfaktorer for præcise resultater.
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Rapporter & Eksport</Card.Title>
+                <Card.Text className="text-muted">
+                  Download rapporter i PDF/Excel eller del data med dit team direkte fra platformen.
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
+
+
+
+
 {/* --- Sliding User Journey & Supplier Benefits Carousel --- */}
 <Container className="my-5">
   <h2 className="fw-bold text-center mb-4">Din rejse som leverandør</h2>
@@ -408,45 +452,6 @@ export default function App() {
         </Container>
       </section>
 
-      {/* Feature Cards */}
-      <Container className="my-5" id="features">
-        <Row className="text-center mb-4">
-          <h2 className="fw-bold">Kernefunktioner</h2>
-          <p className="text-muted">Alt du behøver til CO₂-rapportering</p>
-        </Row>
-        <Row>
-          <Col md={4} className="mb-4">
-            <Card className="h-100 shadow-sm border-0">
-              <Card.Body>
-                <Card.Title className="fw-bold text-primary">Bruger-venlig Input</Card.Title>
-                <Card.Text className="text-muted">
-                  Indtast start- og slutdestination med autocomplete, vægt og transporttype – vi guider dig!
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={4} className="mb-4">
-            <Card className="h-100 shadow-sm border-0">
-              <Card.Body>
-                <Card.Title className="fw-bold text-primary">Automatisk Beregning</Card.Title>
-                <Card.Text className="text-muted">
-                  Klik beregn, så bruger vi GHG-protokollen og opdaterede emissionsfaktorer for præcise resultater.
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={4} className="mb-4">
-            <Card className="h-100 shadow-sm border-0">
-              <Card.Body>
-                <Card.Title className="fw-bold text-primary">Rapporter & Eksport</Card.Title>
-                <Card.Text className="text-muted">
-                  Download rapporter i PDF/Excel eller del data med dit team direkte fra platformen.
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
 
 
 
