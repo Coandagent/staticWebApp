@@ -418,58 +418,41 @@ export default function App() {
         </Row>
       </Container>
 
-
-{/* --- Live User Journey & Supplier Benefits --- */}
-<Container className="my-5" id="supplier-opportunities">
+{/* --- Sliding User Journey & Supplier Benefits Carousel --- */}
+<Container className="my-5">
   <h2 className="fw-bold text-center mb-4">Din rejse som leverandør</h2>
-  <Row className="g-4 justify-content-center">
+  <Carousel controls={true} indicators={false} interval={null} className="pb-4">
     {[ 
-      {
-        icon: <FaUserPlus size={48} className="mb-3 text-success"/>,
-        title: 'Opret konto',
-        desc: 'Gratis konto på 30 sekunder – kom i gang uden binding.'
-      },
-      {
-        icon: <FaRoute size={48} className="mb-3 text-success"/>,
-        title: 'Indtast data',
-        desc: 'Vælg transporttype (vej/​skib/​fly), indtast rute & vægt – vi guider dig gennem hvert trin.'
-      },
-      {
-        icon: <FaChartLine size={48} className="mb-3 text-success"/>,
-        title: 'Se resultater',
-        desc: 'Interaktive grafer og tal for CO₂-udledning – forstå dit klimaaftryk med et blik.'
-      },
-      {
-        icon: <FaHandshake size={48} className="mb-3 text-success"/>,
-        title: 'Del med kunder',
-        desc: 'Del professionelle rapporter (PDF/Excel) med eget logo – styrk tilliden i forsyningskæden.'
-      },
-      {
-        icon: <FaTruck size={48} className="mb-3 text-success"/>,
-        title: 'Optimer ruter',
-        desc: 'Identificér tunge transportsegmenter og reducer både CO₂ og omkostninger.'
-      },
-      {
-        icon: <FaShip size={48} className="mb-3 text-success"/>,
-        title: 'Multimodal indsigt',
-        desc: 'Få total overblik over vej, skib og luft i ét dashboard.'
-      },
-      {
-        icon: <FaPlane size={48} className="mb-3 text-success"/>,
-        title: 'Skaler til Pro',
-        desc: 'White-label rapporter, API-adgang & prioriteret support for konsulenter.'
-      },
-    ].map((step, i) => (
-      <Col key={i} xs={12} md={6} lg={4}>
-        <Card className="h-100 text-center border-0 shadow-sm p-4">
-          {step.icon}
-          <Card.Title className="fw-bold">{step.title}</Card.Title>
-          <Card.Text className="text-muted">{step.desc}</Card.Text>
-        </Card>
-      </Col>
+      // define your steps
+      { icon: <FaUserPlus size={48} className="text-success"/>, title: 'Opret konto', desc: 'Gratis konto på 30 sekunder – kom i gang uden binding.' },
+      { icon: <FaRoute size={48} className="text-success"/>, title: 'Indtast data', desc: 'Vælg transporttype, indtast rute & vægt – vi guider dig.' },
+      { icon: <FaChartLine size={48} className="text-success"/>, title: 'Se resultater', desc: 'Interaktive grafer & tal for CO₂-udledning.' },
+      { icon: <FaHandshake size={48} className="text-success"/>, title: 'Del med kunder', desc: 'Share PDF/Excel med eget logo – styrk tilliden.' },
+      { icon: <FaTruck size={48} className="text-success"/>, title: 'Optimer ruter', desc: 'Identificér CO₂-tunge ruter & reducer omkostninger.' },
+      { icon: <FaShip size={48} className="text-success"/>, title: 'Multimodal', desc: 'Overblik over vej, skib & luft i ét dashboard.' },
+      { icon: <FaPlane size={48} className="text-success"/>, title: 'Skaler til Pro', desc: 'White-label rapporter, API-adgang & support.' },
+    ].reduce((slides, step, i, arr) => {
+      // group into pairs
+      if (i % 2 === 0) slides.push(arr.slice(i, i + 2));
+      return slides;
+    }, [] as any[]).map((pair, idx) => (
+      <Carousel.Item key={idx}>
+        <Row className="justify-content-center g-4">
+          {pair.map((step, j) => (
+            <Col xs={12} md={6} key={j}>
+              <Card className="text-center border-0 shadow-sm p-4">
+                {step.icon}
+                <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title>
+                <Card.Text className="text-muted">{step.desc}</Card.Text>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </Carousel.Item>
     ))}
-  </Row>
+  </Carousel>
 </Container>
+
 
 
       {/* Calculator Section */}
