@@ -2,7 +2,15 @@
 
 /* --- Brand Variables & Resets --- */
 :root {
-  --brand-green: #2a8f64;
+  /* Primary brand green (used for key actions and highlights) */
+  --brand-green-primary: #2a8f64;
+  /* Darker shade for headers, footers, and table headers */
+  --brand-green-dark: #1f684b;
+  /* Lighter shade for backgrounds, cards, and accents */
+  --brand-green-light: #e6f5ee;
+  /* Accent green for buttons and links hover states */
+  --brand-green-accent: #58b07a;
+  /* Neutral text and background variables */
   --text-primary: #212529;
   --bg-light: #f9fdfc;
   --font-sans: 'Segoe UI', 'Ubuntu', sans-serif;
@@ -33,7 +41,7 @@ body {
 }
 
 .App-header {
-  background-color: var(--brand-green);
+  background-color: var(--brand-green-primary);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -44,21 +52,17 @@ body {
 }
 
 .App-link {
-  color: var(--brand-green);
+  color: var(--brand-green-accent);
 }
 
 @keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 /* --- Navbar Branding --- */
 .brand-navbar {
-  background-color: var(--brand-green) !important;
+  background-color: var(--brand-green-dark) !important;
 }
 .brand-navbar .navbar-brand,
 .brand-navbar .nav-link {
@@ -70,7 +74,13 @@ body {
 }
 .brand-navbar .btn-outline-light:hover {
   background-color: #fff;
-  color: var(--brand-green);
+  color: var(--brand-green-dark);
+}
+
+/* --- Hero Section Override --- */
+.hero {
+  background-color: var(--brand-green-light) !important;
+  color: var(--brand-green-dark);
 }
 
 /* --- Card & Table Styling --- */
@@ -82,7 +92,7 @@ body {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 .brand-table th {
-  background-color: var(--brand-green) !important;
+  background-color: var(--brand-green-dark) !important;
   color: #fff;
 }
 .brand-table td,
@@ -92,15 +102,31 @@ body {
 
 /* --- Buttons & Toast --- */
 .btn-success {
-  background-color: var(--brand-green) !important;
-  border-color: var(--brand-green) !important;
+  background-color: var(--brand-green-primary) !important;
+  border-color: var(--brand-green-primary) !important;
 }
 .btn-success:hover {
-  background-color: #23774b !important; /* darker green */
-  border-color: #23774b !important;
+  background-color: var(--brand-green-accent) !important;
+  border-color: var(--brand-green-accent) !important;
+}
+.btn-outline-success {
+  color: var(--brand-green-primary);
+  border-color: var(--brand-green-primary);
+}
+.btn-outline-success:hover {
+  background-color: var(--brand-green-primary);
+  color: #fff;
 }
 .toast-container .toast {
-  border-left: 4px solid var(--brand-green);
+  border-left: 4px solid var(--brand-green-primary);
+}
+
+/* --- Override Bootstrap Primary Utilities --- */
+.bg-primary {
+  background-color: var(--brand-green-primary) !important;
+}
+.text-primary {
+  color: var(--brand-green-dark) !important;
 }
 
 /* --- Footer Styling --- */
@@ -113,13 +139,13 @@ body {
   color: #666 !important;
 }
 
-/* --- Override Bootstrap Primary Utilities & Hero --- */
-.bg-primary {
-  background-color: var(--brand-green) !important;
+/* --- Utility Helpers --- */
+.text-success {
+  color: var(--brand-green-primary) !important;
 }
-.text-primary {
-  color: var(--brand-green) !important;
+.bg-success {
+  background-color: var(--brand-green-primary) !important;
 }
-.hero {
-  background-color: var(--brand-green) !important;
+.bg-light-green {
+  background-color: var(--brand-green-light) !important;
 }
