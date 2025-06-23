@@ -27,6 +27,9 @@ import {
   FaDownload,
   FaTrash,
   FaExclamationCircle,
+  FaTruck,
+  FaShip,
+  FaPlane,
 } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 
@@ -187,7 +190,6 @@ export default function App() {
     const file = e.target.files[0];
     if (!file) return;
     setFileLoading(true);
-    // eslint-disable-next-line no-unused-vars
     const ext = file.name.split('.').pop().toLowerCase();
     const reader = new FileReader();
 
@@ -331,51 +333,69 @@ export default function App() {
       </Navbar>
 
       {/* Hero */}
-      <header className="hero bg-primary text-white text-center py-5">
+      <header className="hero position-relative overflow-hidden text-center bg-gradient-primary text-white py-5">
         <Container>
-          <h1 className="display-5 fw-bold">Mål. Reducér. Rapportér.</h1>
-          <p className="lead mb-4">Nem CO₂-beregning for transport i overensstemmelse med EU's ESG-krav.</p>
-          <Button variant="light" size="lg" className="me-2">Prøv Gratis</Button>
-          <Button variant="outline-light" size="lg">Book Demo</Button>
+          <h1 className="display-4 fw-bold mb-3">Mål. Reducér. Rapportér.</h1>
+          <p className="lead mb-4">Nem CO₂-beregning for transport – vej, sø og luft – i overensstemmelse med EU’s ESG-krav.</p>
+          <Button variant="light" size="lg" className="me-2 shadow-sm">Prøv Gratis</Button>
+          <Button variant="outline-light" size="lg" className="shadow-sm">Book Demo</Button>
         </Container>
+        <div className="hero-overlay position-absolute top-0 start-0 w-100 h-100" />
       </header>
 
       {/* Feature Cards */}
-      <Container className="my-5" id="features">
-        <Row className="text-center mb-4">
+      <Container id="features" className="py-5">
+        <Row className="text-center mb-5">
           <h2 className="fw-bold">Kernefunktioner</h2>
-          <p className="text-muted">Alt du behøver til CO₂-rapportering</p>
+          <p className="text-muted">Alt du behøver til CO₂-rapportering på ét sted</p>
         </Row>
         <Row>
-          {['Data Input','Automatisk Beregning','Rapporter & Eksport'].map((t,i)=>(
-            <Col md={4} className="mb-4" key={i}>
-              <Card className="h-100 shadow-sm border-0">
-                <Card.Body>
-                  <Card.Title className="fw-bold text-primary">{t}</Card.Title>
-                  <Card.Text className="text-muted">Beskrivelse af funktionen.</Card.Text>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
+          <Col md={4} className="mb-4">
+            <Card className="h-100 border-0 shadow-sm hover-shadow-lg">
+              <Card.Body className="text-center">
+                <FaTruck size={48} className="text-primary mb-3" />
+                <Card.Title className="fw-bold">Data Input</Card.Title>
+                <Card.Text className="text-muted">Trinvis formular med forklaringer og autoudfyldelse via Azure Maps.</Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 border-0 shadow-sm hover-shadow-lg">
+              <Card.Body className="text-center">
+                <FaShip size={48} className="text-primary mb-3" />
+                <Card.Title className="fw-bold">Automatisk Beregning</Card.Title>
+                <Card.Text className="text-muted">Serverless beregningsmotor med Haversine-formel og GHG-faktorer.</Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 border-0 shadow-sm hover-shadow-lg">
+              <Card.Body className="text-center">
+                <FaPlane size={48} className="text-primary mb-3" />
+                <Card.Title className="fw-bold">Rapporter & Eksport</Card.Title>
+                <Card.Text className="text-muted">Gem, grupper, og eksporter dine CO₂-data til PDF, XLSX eller CSV.</Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
         </Row>
       </Container>
 
       {/* Calculator Section */}
-      <Container className="my-5">
-        <Card className="shadow-sm">
+      <Container className="py-5">
+        <Card className="shadow-sm border-0">
           <Card.Body>
-            <Card.Title className="text-success">Transport CO₂ Calculator</Card.Title>
+            <Card.Title className="text-success mb-4">Transport CO₂ Calculator</Card.Title>
+
             {/* Upload & Controls */}
-            {/* (unchanged) */}
-            <div className="mb-3 d-flex flex-wrap align-items-center">
+            <div className="d-flex flex-wrap align-items-center mb-4">
               <Form.Control type="file" accept=".csv,.json,.xlsx,.xls"
                 onChange={handleFileUpload} id="file-upload" style={{display:'none'}} />
               <Button as="label" htmlFor="file-upload"
-                variant="outline-success" className="me-2 mb-2">
+                variant="outline-success" className="me-3 mb-2">
                 {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>}
                 Upload File
               </Button>
-              <Dropdown onSelect={setFormat} className="me-2 mb-2">
+              <Dropdown onSelect={setFormat} className="me-3 mb-2">
                 <Dropdown.Toggle variant="outline-secondary">
                   Format: {format.toUpperCase()}
                 </Dropdown.Toggle>
@@ -392,8 +412,7 @@ export default function App() {
 
             {/* Desktop table */}
             <div className="d-none d-md-block">
-              <Table bordered responsive className="align-middle brand-table">
-                {/* ...table head & body unchanged... */}
+              <Table bordered responsive hover className="align-middle">
                 <thead className="table-light">
                   <tr>
                     <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
@@ -407,29 +426,23 @@ export default function App() {
                         onChange={e=>handleChange(i,'from',e.target.value)}/></td>
                       <td><Form.Control placeholder="City or Code" value={r.to}
                         onChange={e=>handleChange(i,'to',e.target.value)}/></td>
-                      <td>
-                        <Form.Select value={r.mode}
-                          onChange={e=>handleChange(i,'mode',e.target.value)}>
+                      <td><Form.Select value={r.mode}
+                        onChange={e=>handleChange(i,'mode',e.target.value)}>
                           <option value="road">Road</option>
                           <option value="air">Air</option>
                           <option value="sea">Sea</option>
-                        </Form.Select>
-                      </td>
+                        </Form.Select></td>
                       <td><Form.Control type="number" placeholder="0" value={r.weight}
                         onChange={e=>handleChange(i,'weight',e.target.value)}/></td>
-                      <td className="text-center">
-                        <Form.Check checked={r.eu}
-                          onChange={e=>handleChange(i,'eu',e.target.checked)}/>
-                      </td>
+                      <td className="text-center"><Form.Check checked={r.eu}
+                        onChange={e=>handleChange(i,'eu',e.target.checked)}/></td>
                       <td><Form.Control placeholder="State-code" value={r.state}
                         onChange={e=>handleChange(i,'state',e.target.value)}/></td>
                       <td>{r.error && <Badge bg="danger">
                         <FaExclamationCircle className="me-1"/>{r.error}
                       </Badge>}</td>
-                      <td className="text-center">
-                        <Button variant="outline-danger" size="sm"
-                          onClick={()=>removeRow(i)}><FaTrash/></Button>
-                      </td>
+                      <td className="text-center"><Button variant="outline-danger" size="sm"
+                        onClick={()=>removeRow(i)}><FaTrash/></Button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -439,27 +452,66 @@ export default function App() {
             {/* Mobile stacked */}
             <div className="d-block d-md-none">
               {rows.map((r,i)=>(
-                <Card key={i} className="mb-3 brand-card-mobile">
+                <Card key={i} className="mb-3 shadow-sm">
                   <Card.Body>
-                    {/* ...mobile form unchanged... */}
+                    <Form.Group className="mb-2">
+                      <Form.Label>From</Form.Label>
+                      <Form.Control placeholder="City or Code" value={r.from}
+                        onChange={e=>handleChange(i,'from',e.target.value)}/>
+                    </Form.Group>
+                    <Form.Group className="mb-2">
+                      <Form.Label>To</Form.Label>
+                      <Form.Control placeholder="City or Code" value={r.to}
+                        onChange={e=>handleChange(i,'to',e.target.value)}/>
+                    </Form.Group>
+                    <Form.Group className="mb-2">
+                      <Form.Label>Mode</Form.Label>
+                      <Form.Select value={r.mode}
+                        onChange={e=>handleChange(i,'mode',e.target.value)}>
+                        <option value="road">Road</option>
+                        <option value="air">Air</option>
+                        <option value="sea">Sea</option>
+                      </Form.Select>
+                    </Form.Group>
+                    <Form.Group className="mb-2">
+                      <Form.Label>Weight (kg)</Form.Label>
+                      <Form.Control type="number" placeholder="0" value={r.weight}
+                        onChange={e=>handleChange(i,'weight',e.target.value)}/>
+                    </Form.Group>
+                    <Form.Group className="mb-2 d-flex align-items-center">
+                      <Form.Check label="EU" checked={r.eu}
+                        onChange={e=>handleChange(i,'eu',e.target.checked)}/>
+                      <Form.Control placeholder="State-code" value={r.state}
+                        onChange={e=>handleChange(i,'state',e.target.value)}
+                        className="ms-3"/>
+                    </Form.Group>
+                    {r.error && <Badge bg="danger" className="mb-2">
+                      <FaExclamationCircle className="me-1"/>{r.error}
+                    </Badge>}
+                    <Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}>
+                      <FaTrash className="me-1"/>Remove
+                    </Button>
                   </Card.Body>
                 </Card>
               ))}
             </div>
 
-            <Row className="mt-3">
-              <Col><Button variant="outline-success" onClick={addRow}>
-                <FaUpload className="me-1"/> Add Row
-              </Button></Col>
+            <Row className="mt-4">
+              <Col>
+                <Button variant="outline-success" onClick={addRow}>
+                  <FaUpload className="me-1"/> Add Row
+                </Button>
+              </Col>
               <Col className="text-end">
                 <Button variant="success" onClick={handleManualCalculate} disabled={loading}>
                   {loading
-                    ? <><Spinner size="sm" className="me-1"/>Calculating…</>
+                    ? <><Spinner animation="border" size="sm" className="me-1"/>Calculating…</>
                     : <><FaCalculator className="me-1"/>Calculate</>
                   }
                 </Button>
               </Col>
             </Row>
+
           </Card.Body>
         </Card>
 
@@ -467,8 +519,8 @@ export default function App() {
         {results.length>0 && (
           <Card className="shadow-sm mt-4">
             <Card.Body>
-              <Card.Title className="text-success">Results</Card.Title>
-              <Table striped bordered hover responsive className="mt-3 brand-table">
+              <Card.Title className="text-success mb-3">Results</Card.Title>
+              <Table striped bordered hover responsive className="align-middle">
                 <thead>
                   <tr>
                     <th>From (Used)</th><th>To (Used)</th><th>Mode</th>
@@ -505,10 +557,12 @@ export default function App() {
       </ToastContainer>
 
       {/* Footer */}
-      <footer className="bg-white py-4 text-center brand-footer">
-        <small className="text-muted">
-          © {new Date().getFullYear()} CarbonRoute – Mål. Reducér. Rapportér.
-        </small>
+      <footer className="bg-light py-4 text-center">
+        <Container>
+          <small className="text-muted">
+            © {new Date().getFullYear()} CarbonRoute – Mål. Reducér. Rapportér.
+          </small>
+        </Container>
       </footer>
     </>
   );
