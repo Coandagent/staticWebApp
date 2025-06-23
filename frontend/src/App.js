@@ -7,7 +7,8 @@
 
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Accordion } from 'react-bootstrap';
+import { Row, Col } from 'react-bootstrap';
+import { FaUserPlus, FaRoute, FaChartLine, FaHandshake, FaTruck, FaShip, FaPlane } from 'react-icons/fa';
 import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
 
@@ -419,40 +420,56 @@ export default function App() {
       </Container>
 
 
-{/* --- User Journey & Supplier Opportunities --- */}
+{/* --- Live User Journey & Supplier Benefits --- */}
 <Container className="my-5" id="supplier-opportunities">
-  <h2 className="fw-bold text-center mb-4">Brugerrejse & Leverandør-muligheder</h2>
-  <Accordion defaultActiveKey="0">
-    <Accordion.Item eventKey="0">
-      <Accordion.Header>1. Opret konto og log ind</Accordion.Header>
-      <Accordion.Body>
-        Som leverandør kan du hurtigt åbne en gratis konto, indtaste dine transportdata og se CO₂-beregninger i realtid.
-      </Accordion.Body>
-    </Accordion.Item>
-    <Accordion.Item eventKey="1">
-      <Accordion.Header>2. Indtast transportdata</Accordion.Header>
-      <Accordion.Body>
-        Vælg transporttype, indtast rute og vægt – platformen guider dig trin for trin og sikrer præcis dataindsamling.
-      </Accordion.Body>
-    </Accordion.Item>
-    <Accordion.Item eventKey="2">
-      <Accordion.Header>3. Analysér og rapportér</Accordion.Header>
-      <Accordion.Body>
-        Se grafer og detaljerede resultater, download rapporter til kunder og dokumentér overholdelse af ESG-krav.
-      </Accordion.Body>
-    </Accordion.Item>
-    <Accordion.Item eventKey="3">
-      <Accordion.Header>4. Fordele som leverandør</Accordion.Header>
-      <Accordion.Body>
-        <ul>
-          <li>Styrk dit CO₂-regnskab over for kunder</li>
-          <li>Vis transparens og øg troværdighed i din forsyningskæde</li>
-          <li>Identificér optimeringsmuligheder og reducer omkostninger</li>
-          <li>Lever professionelle rapporter med eget logo (Pro/Enterprise)</li>
-        </ul>
-      </Accordion.Body>
-    </Accordion.Item>
-  </Accordion>
+  <h2 className="fw-bold text-center mb-4">Din rejse som leverandør</h2>
+  <Row className="g-4 justify-content-center">
+    {[ 
+      {
+        icon: <FaUserPlus size={48} className="mb-3 text-success"/>,
+        title: 'Opret konto',
+        desc: 'Gratis konto på 30 sekunder – kom i gang uden binding.'
+      },
+      {
+        icon: <FaRoute size={48} className="mb-3 text-success"/>,
+        title: 'Indtast data',
+        desc: 'Vælg transporttype (vej/​skib/​fly), indtast rute & vægt – vi guider dig gennem hvert trin.'
+      },
+      {
+        icon: <FaChartLine size={48} className="mb-3 text-success"/>,
+        title: 'Se resultater',
+        desc: 'Interaktive grafer og tal for CO₂-udledning – forstå dit klimaaftryk med et blik.'
+      },
+      {
+        icon: <FaHandshake size={48} className="mb-3 text-success"/>,
+        title: 'Del med kunder',
+        desc: 'Del professionelle rapporter (PDF/Excel) med eget logo – styrk tilliden i forsyningskæden.'
+      },
+      {
+        icon: <FaTruck size={48} className="mb-3 text-success"/>,
+        title: 'Optimer ruter',
+        desc: 'Identificér tunge transportsegmenter og reducer både CO₂ og omkostninger.'
+      },
+      {
+        icon: <FaShip size={48} className="mb-3 text-success"/>,
+        title: 'Multimodal indsigt',
+        desc: 'Få total overblik over vej, skib og luft i ét dashboard.'
+      },
+      {
+        icon: <FaPlane size={48} className="mb-3 text-success"/>,
+        title: 'Skaler til Pro',
+        desc: 'White-label rapporter, API-adgang & prioriteret support for konsulenter.'
+      },
+    ].map((step, i) => (
+      <Col key={i} xs={12} md={6} lg={4}>
+        <Card className="h-100 text-center border-0 shadow-sm p-4">
+          {step.icon}
+          <Card.Title className="fw-bold">{step.title}</Card.Title>
+          <Card.Text className="text-muted">{step.desc}</Card.Text>
+        </Card>
+      </Col>
+    ))}
+  </Row>
 </Container>
 
 
