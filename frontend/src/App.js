@@ -580,68 +580,69 @@ const handleViewHistory = async () => {
 
 
     {/* History drill-down view */}
-    {view === 'history' && (
-      <Container className="my-5">
-        <Button variant="secondary" onClick={() => setView('calculator')}>
-          ← Back to Calculator
-        </Button>
+// … right after </Container> of your calculator/results …
 
-        {!selectedGroup && (
-          <>
-            <h2 className="mt-4">Saved Calculations</h2>
-            {Object.entries(historyGroups).map(([year, months]) => (
-              <div key={year} className="mb-3">
-                <h4>{year}</h4>
-                {Object.keys(months).map(month => (
-                  <Badge
-                    key={month}
-                    bg="primary"
-                    className="me-2 mb-1"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setSelectedGroup({ year, month })}
-                  >
-                    {month} ({months[month].length})
-                  </Badge>
-                ))}
-              </div>
+{view === 'history' && (
+  <Container className="my-5">
+    <Button variant="secondary" onClick={() => setView('calculator')}>
+      ← Back to Calculator
+    </Button>
+
+    {!selectedGroup ? (
+      <>
+        <h2 className="mt-4">Saved Calculations</h2>
+        {Object.entries(historyGroups).map(([year, months]) => (
+          <div key={year} className="mb-3">
+            <h4>{year}</h4>
+            {Object.entries(months).map(([month, entries]) => (
+              <Badge
+                key={month}
+                bg="primary"
+                className="me-2 mb-1"
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSelectedGroup({ year, month })}
+              >
+                {month} ({entries.length})
+              </Badge>
             ))}
-          </>
-        )}
-
-        {selectedGroup && (
-          <>
-            <Button variant="link" onClick={() => setSelectedGroup(null)}>
-              ← Back to overview
-            </Button>
-            <h3 className="mt-3">
-              {selectedGroup.month} {selectedGroup.year}
-            </h3>
-            <Table striped bordered hover responsive className="mt-2">
-              <thead>
-                <tr>
-                  <th>From</th>
-                  <th>To</th>
-                  <th>Mode</th>
-                  <th>Distance</th>
-                  <th>CO₂</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historyGroups[selectedGroup.year][selectedGroup.month].map((r, i) => (
-                  <tr key={i}>
-                    <td>{r.from_input}</td>
-                    <td>{r.to_input}</td>
-                    <td>{r.mode}</td>
-                    <td>{r.distance_km}</td>
-                    <td>{r.co2_kg}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </>
-        )}
-      </Container>
+          </div>
+        ))}
+      </>
+    ) : (
+      <>
+        <Button variant="link" onClick={() => setSelectedGroup(null)}>
+          ← Back to overview
+        </Button>
+        <h3 className="mt-3">
+          {selectedGroup.month} {selectedGroup.year}
+        </h3>
+        <Table striped bordered hover responsive className="mt-2">
+          <thead>
+            <tr>
+              <th>From</th>
+              <th>To</th>
+              <th>Mode</th>
+              <th>Distance</th>
+              <th>CO₂</th>
+            </tr>
+          </thead>
+          <tbody>
+            {historyGroups[selectedGroup.year][selectedGroup.month].map((r, i) => (
+              <tr key={i}>
+                <td>{r.from_input}</td>
+                <td>{r.to_input}</td>
+                <td>{r.mode}</td>
+                <td>{r.distance_km}</td>
+                <td>{r.co2_kg}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </>
     )}
+  </Container>
+)}
+
 
 
 
