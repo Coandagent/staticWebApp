@@ -172,8 +172,10 @@ export default function App() {
     }
   };
 
-  const handleManualCalculate = () => {
+ // ← ADD THIS NEW FUNCTION ↓
+  const handleCalculateAndSave = async () => {
     if (!validate()) return;
+
     const payload = rows.map(r=>({
       from_location: r.from,
       to_location:   r.to,
@@ -182,7 +184,33 @@ export default function App() {
       eu:            r.eu,
       state:         r.state.trim().toLowerCase(),
     }));
-    calculate(payload);
+
+    setLoading(true);
+    try {
+      // 1) Calculate
+      const getRes = await fetch('/api/GetCo2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!getRes.ok) throw new Error(await getRes.text());
+      const calcResults = await getRes.json();
+      setResults(calcResults);
+
+      // 2) Save
+      await fetch('/api/SaveCo2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results: calcResults }),
+      });
+
+      showToast('Beregnet og gemt!');  // “Calculated and saved!”
+    } catch(err) {
+      showToast(err.message);
+    } finally {
+      setLoading(false);
+      setFileLoading(false);
+    }
   };
 
   // file upload
