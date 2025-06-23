@@ -1,3 +1,23 @@
+/* frontend/src/App.css */
+
+/* --- Brand Variables & Resets --- */
+:root {
+  --brand-green: #2a8f64;
+  --brand-blue:  #004080;
+  --text-primary: #212529;
+  --bg-light: #f9fdfc;
+  --font-sans: 'Segoe UI', 'Ubuntu', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  background-color: var(--bg-light);
+  color: var(--text-primary);
+}
+
+/* --- Preserve Original App Styles & Animations --- */
 .App {
   text-align: center;
 }
@@ -35,4 +55,61 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* --- Navbar Branding --- */
+.brand-navbar {
+  background-color: var(--brand-blue) !important;
+}
+.brand-navbar .navbar-brand,
+.brand-navbar .nav-link {
+  color: #fff !important;
+}
+.brand-navbar .btn-outline-light {
+  border-color: #fff;
+  color: #fff;
+}
+.brand-navbar .btn-outline-light:hover {
+  background-color: #fff;
+  color: var(--brand-blue);
+}
+
+/* --- Card & Table Styling --- */
+.brand-card,
+.brand-card-mobile {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.brand-table th {
+  background-color: var(--brand-green) !important;
+  color: #fff;
+}
+.brand-table td,
+.brand-table th {
+  vertical-align: middle;
+}
+
+/* --- Buttons & Toast --- */
+.btn-success {
+  background-color: var(--brand-green) !important;
+  border-color: var(--brand-green) !important;
+}
+.btn-success:hover {
+  background-color: #23774b !important; /* darker green */
+  border-color: #23774b !important;
+}
+.toast-container .toast {
+  border-left: 4px solid var(--brand-green);
+}
+
+/* --- Footer Styling --- */
+.brand-footer {
+  background-color: #fff;
+  border-top: 1px solid #e0e0e0;
+  padding: 1rem 0;
+}
+.brand-footer .text-muted {
+  color: #666 !important;
 }

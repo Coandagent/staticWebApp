@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import './App.css'; // <-- Custom branding styles
+import logo from './assets/logo.svg'; // <-- Your green-themed logo
+
 import {
   Container,
   Navbar,
@@ -96,20 +99,14 @@ export default function App() {
   // auth state
   const [user, setUser] = useState(null);
 
-  // check login on mount
   useEffect(() => {
     fetch('/.auth/me')
       .then(res => {
         if (!res.ok) throw new Error('Not logged in');
         return res.json();
       })
-      .then(data => {
-        // Azure SWA returns { clientPrincipal: { userId, userDetails, identityProvider, userRoles } }
-        setUser(data.clientPrincipal);
-      })
-      .catch(() => {
-        setUser(null);
-      });
+      .then(data => setUser(data.clientPrincipal))
+      .catch(() => setUser(null));
   }, []);
 
   // UI state
@@ -286,9 +283,9 @@ export default function App() {
   table{width:100%;border-collapse:collapse;margin-top:20px}
   th{background:#004080;color:#fff;padding:10px;text-align:left}
   td{border:1px solid #ddd;padding:8px}
-  footer{margin-top:40px;font-size:12px;text-align:center;color:#888}
+  footer{margin-top:40px;font-size:12px;text-align:center;color#888}
 </style></head><body>
-  <div class="watermark">Coandagent</div>
+  <div class="watermark">CarbonRoute</div>
   <header><h1>CO₂ Transport Report</h1>
     <p>${new Date().toLocaleDateString()}</p></header>
   <table><thead><tr>
@@ -303,7 +300,7 @@ export default function App() {
       <td>${r.error||''}</td>
     </tr>`).join('')}
   </tbody></table>
-  <footer>© ${new Date().getFullYear()} Coandagent</footer>
+  <footer>© ${new Date().getFullYear()} CarbonRoute</footer>
 </body></html>`);
       win.document.close();
       win.focus();
@@ -313,22 +310,25 @@ export default function App() {
 
   return (
     <>
-      <Navbar bg="light" expand="lg" className="shadow-sm">
+      <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
         <Container fluid>
-          <Navbar.Brand>Coandagent ESG CO₂ Dashboard</Navbar.Brand>
+          <Navbar.Brand className="d-flex align-items-center">
+            <img src={logo} alt="CarbonRoute" height="30" className="me-2"/>
+            CarbonRoute ESG CO₂ Dashboard
+          </Navbar.Brand>
           <Nav className="ms-auto d-flex align-items-center">
             {user
               ? <>
                   <span className="me-3">Hello, {user.userDetails}</span>
                   <Button
-                    variant="outline-danger"
+                    variant="outline-light"
                     size="sm"
                     onClick={() => window.location.href='/.auth/logout'}>
                     Logout
                   </Button>
                 </>
               : <Button
-                  variant="outline-primary"
+                  variant="outline-light"
                   size="sm"
                   onClick={() => window.location.href='/.auth/login/aad'}>
                   Login
@@ -339,9 +339,9 @@ export default function App() {
       </Navbar>
 
       <Container className="my-4">
-        <Card className="shadow-sm mb-4">
+        <Card className="shadow-sm mb-4 brand-card">
           <Card.Body>
-            <Card.Title>Transport CO₂ Calculator</Card.Title>
+            <Card.Title className="text-success">Transport CO₂ Calculator</Card.Title>
 
             {/* Upload & download buttons */}
             <div className="mb-3 d-flex flex-wrap align-items-center">
@@ -352,7 +352,7 @@ export default function App() {
                 id="file-upload"
                 style={{display:'none'}}
               />
-              <Button as="label" htmlFor="file-upload" variant="outline-primary" className="me-2 mb-2">
+              <Button as="label" htmlFor="file-upload" variant="outline-success" className="me-2 mb-2">
                 {fileLoading
                   ? <Spinner animation="border" size="sm"/>
                   : <FaUpload className="me-1"/>}
@@ -368,15 +368,14 @@ export default function App() {
                   )}
                 </Dropdown.Menu>
               </Dropdown>
-              <Button variant="primary" onClick={downloadReport} className="mb-2">
+              <Button variant="success" onClick={downloadReport} className="mb-2">
                 <FaDownload className="me-1"/> Download Report
               </Button>
             </div>
 
-            {/* Manual input */}
             {/* Desktop table */}
             <div className="d-none d-md-block">
-              <Table bordered responsive className="align-middle">
+              <Table bordered responsive className="align-middle brand-table">
                 <thead className="table-light">
                   <tr>
                     <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
@@ -386,67 +385,18 @@ export default function App() {
                 <tbody>
                   {rows.map((r,i) =>
                     <tr key={i} className={r.error ? 'table-danger' : ''}>
-                      <td>
-                        <Form.Control
-                          placeholder="City or Code"
-                          value={r.from}
-                          onChange={e=>handleChange(i,'from',e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          placeholder="City or Code"
-                          value={r.to}
-                          onChange={e=>handleChange(i,'to',e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <Form.Select
-                          value={r.mode}
-                          onChange={e=>handleChange(i,'mode',e.target.value)}>
-                          <option value="road">Road</option>
-                          <option value="air">Air</option>
-                          <option value="sea">Sea</option>
-                        </Form.Select>
-                      </td>
-                      <td>
-                        <Form.Control
-                          type="number"
-                          placeholder="0"
-                          value={r.weight}
-                          onChange={e=>handleChange(i,'weight',e.target.value)}
-                        />
-                      </td>
-                      <td className="text-center">
-                        <Form.Check
-                          type="checkbox"
-                          checked={r.eu}
-                          onChange={e=>handleChange(i,'eu',e.target.checked)}
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          placeholder="State-code"
-                          value={r.state}
-                          onChange={e=>handleChange(i,'state',e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        {r.error && (
-                          <Badge bg="danger">
-                            <FaExclamationCircle className="me-1"/>
-                            {r.error}
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="text-center">
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          onClick={()=>removeRow(i)}>
-                          <FaTrash/>
-                        </Button>
-                      </td>
+                      <td><Form.Control placeholder="City or Code" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)} /></td>
+                      <td><Form.Control placeholder="City or Code" value={r.to} onChange={e=>handleChange(i,'to',e.target.value)} /></td>
+                      <td><Form.Select value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}>
+                        <option value="road">Road</option>
+                        <option value="air">Air</option>
+                        <option value="sea">Sea</option>
+                      </Form.Select></td>
+                      <td><Form.Control type="number" placeholder="0" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)} /></td>
+                      <td className="text-center"><Form.Check type="checkbox" checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)} /></td>
+                      <td><Form.Control placeholder="State-code" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)} /></td>
+                      <td>{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/>{r.error}</Badge>}</td>
+                      <td className="text-center"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash/></Button></td>
                     </tr>
                   )}
                 </tbody>
@@ -456,32 +406,22 @@ export default function App() {
             {/* Mobile stacked */}
             <div className="d-block d-md-none">
               {rows.map((r,i) =>
-                <Card key={i} className="mb-3">
+                <Card key={i} className="mb-3 brand-card-mobile">
                   <Card.Body>
                     <Row className="mb-2">
                       <Col xs={12} className="mb-2">
                         <Form.Label>From</Form.Label>
-                        <Form.Control
-                          placeholder="City or Code"
-                          value={r.from}
-                          onChange={e=>handleChange(i,'from',e.target.value)}
-                        />
+                        <Form.Control placeholder="City or Code" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)} />
                       </Col>
                       <Col xs={12}>
                         <Form.Label>To</Form.Label>
-                        <Form.Control
-                          placeholder="City or Code"
-                          value={r.to}
-                          onChange={e=>handleChange(i,'to',e.target.value)}
-                        />
+                        <Form.Control placeholder="City or Code" value={r.to} onChange={e=>handleChange(i,'to',e.target.value)} />
                       </Col>
                     </Row>
                     <Row className="mb-2">
                       <Col xs={6}>
                         <Form.Label>Mode</Form.Label>
-                        <Form.Select
-                          value={r.mode}
-                          onChange={e=>handleChange(i,'mode',e.target.value)}>
+                        <Form.Select value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}>
                           <option value="road">Road</option>
                           <option value="air">Air</option>
                           <option value="sea">Sea</option>
@@ -489,44 +429,15 @@ export default function App() {
                       </Col>
                       <Col xs={6}>
                         <Form.Label>Weight (kg)</Form.Label>
-                        <Form.Control
-                          type="number"
-                          placeholder="0"
-                          value={r.weight}
-                          onChange={e=>handleChange(i,'weight',e.target.value)}
-                        />
+                        <Form.Control type="number" placeholder="0" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)} />
                       </Col>
                     </Row>
                     <Row className="mb-2 align-items-center">
-                      <Col xs="auto">
-                        <Form.Check
-                          label="EU"
-                          checked={r.eu}
-                          onChange={e=>handleChange(i,'eu',e.target.checked)}
-                        />
-                      </Col>
-                      <Col>
-                        <Form.Label>State</Form.Label>
-                        <Form.Control
-                          placeholder="State-code"
-                          value={r.state}
-                          onChange={e=>handleChange(i,'state',e.target.value)}
-                        />
-                      </Col>
+                      <Col xs="auto"><Form.Check label="EU" checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)} /></Col>
+                      <Col><Form.Label>State</Form.Label><Form.Control placeholder="State-code" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)} /></Col>
                     </Row>
-                    {r.error && (
-                      <Badge bg="danger" className="mb-2">
-                        <FaExclamationCircle className="me-1"/> {r.error}
-                      </Badge>
-                    )}
-                    <div>
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={()=>removeRow(i)}>
-                        <FaTrash className="me-1"/> Remove
-                      </Button>
-                    </div>
+                    {r.error && <Badge bg="danger" className="mb-2"><FaExclamationCircle className="me-1"/> {r.error}</Badge>}
+                    <div><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash className="me-1"/> Remove</Button></div>
                   </Card.Body>
                 </Card>
               )}
@@ -534,15 +445,10 @@ export default function App() {
 
             <Row className="mt-3">
               <Col xs={12} sm="auto" className="mb-2">
-                <Button variant="success" onClick={addRow}>
-                  <FaUpload className="me-1"/> Add Row
-                </Button>
+                <Button variant="success" onClick={addRow}><FaUpload className="me-1"/> Add Row</Button>
               </Col>
               <Col xs={12} sm="auto" className="ms-sm-auto">
-                <Button
-                  variant="primary"
-                  onClick={handleManualCalculate}
-                  disabled={loading}>
+                <Button variant="success" onClick={handleManualCalculate} disabled={loading}>
                   {loading
                    ? <><Spinner animation="border" size="sm" className="me-1"/> Calculating…</>
                    : <><FaCalculator className="me-1"/> Calculate</>
@@ -554,38 +460,24 @@ export default function App() {
         </Card>
 
         {results.length > 0 && (
-          <Card className="shadow-sm">
+          <Card className="shadow-sm brand-card">
             <Card.Body>
-              <Card.Title>Results</Card.Title>
-              <Table striped bordered hover responsive className="mt-3">
+              <Card.Title className="text-success">Results</Card.Title>
+              <Table striped bordered hover responsive className="mt-3 brand-table">
                 <thead>
                   <tr>
-                    <th>From (Used)</th><th>To (Used)</th>
-                    <th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
+                    <th>From (Used)</th><th>To (Used)</th><th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.map((r,i) =>
                     <tr key={i} className={r.error ? 'table-danger' : ''}>
-                      <td>
-                        {r.from_input}
-                        <small className="text-muted"> ({r.from_used})</small>
-                      </td>
-                      <td>
-                        {r.to_input}
-                        <small className="text-muted"> ({r.to_used})</small>
-                      </td>
+                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
+                      <td>{r.to_input} <small className="text-muted">({r.to_used})</small></td>
                       <td className="text-capitalize">{r.mode}</td>
                       <td>{r.distance_km}</td>
                       <td>{r.co2_kg}</td>
-                      <td>
-                        {r.error && (
-                          <Badge bg="danger">
-                            <FaExclamationCircle className="me-1"/>
-                            {r.error}
-                          </Badge>
-                        )}
-                      </td>
+                      <td>{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/>{r.error}</Badge>}</td>
                     </tr>
                   )}
                 </tbody>
@@ -596,23 +488,14 @@ export default function App() {
       </Container>
 
       <ToastContainer position="bottom-end" className="p-3">
-        <Toast
-          show={toast.show}
-          bg="warning"
-          style={{ maxWidth: 400, whiteSpace: 'pre-wrap' }}
-          onClose={()=>setToast({show:false,message:''})}
-          delay={7000}
-          autohide>
-          <Toast.Header closeButton={false}>
-            <FaExclamationCircle className="me-2 text-danger"/>
-            <strong className="me-auto">Upload Error</strong>
-          </Toast.Header>
+        <Toast show={toast.show} bg="light" onClose={()=>setToast({show:false,message:''})}>
+          <Toast.Header><strong className="me-auto text-success">Notice</strong></Toast.Header>
           <Toast.Body>{toast.message}</Toast.Body>
         </Toast>
       </ToastContainer>
 
-      <footer className="bg-light py-3 text-center">
-        <small className="text-secondary">© {new Date().getFullYear()} Coandagent</small>
+      <footer className="bg-white py-4 text-center brand-footer">
+        <small className="text-muted">© {new Date().getFullYear()} CarbonRoute – Mål. Reducér. Rapportér.</small>
       </footer>
     </>
   );
