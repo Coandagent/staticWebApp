@@ -8,22 +8,52 @@
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import {
-  FaUserPlus, FaRoute, FaChartLine, FaHandshake, FaTruck, FaShip, FaPlane,
-  FaUpload, FaCalculator, FaDownload, FaTrash, FaExclamationCircle,
-  FaChevronLeft, FaChevronRight
+  FaUserPlus,
+  FaRoute,
+  FaChartLine,
+  FaHandshake,
+  FaTruck,
+  FaShip,
+  FaPlane,
+  FaUpload,
+  FaCalculator,
+  FaDownload,
+  FaTrash,
+  FaExclamationCircle,
+  FaChevronLeft,
+  FaChevronRight
 } from 'react-icons/fa';
 import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
 
 import {
-  Container, Navbar, Nav, Button, Form, Table, Card,
-  Dropdown, Row, Col, Carousel, Spinner, Toast, ToastContainer,
-  Badge, Modal
+  Container,
+  Navbar,
+  Nav,
+  Button,
+  Form,
+  Table,
+  Card,
+  Dropdown,
+  Row,
+  Col,
+  Carousel,
+  Spinner,
+  Toast,
+  ToastContainer,
+  Badge,
+  Modal
 } from 'react-bootstrap';
 
 import * as XLSX from 'xlsx';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
 } from 'recharts';
 
 // --- helper to validate uploaded data columns with aliases ---
@@ -37,19 +67,24 @@ function validateUploadColumns(data) {
     mode:          ['mode','transport','method'],
     weight_kg:     ['weight_kg','weight','weight (kg)','kg'],
     eu:            ['eu','in_eu','european_union','is_eu'],
-    state:         ['state','state_code','province','region'],
+    state:         ['state','state_code','province','region']
   };
   const headers = Object.keys(data[0]).map(h => h.trim().toLowerCase());
-  const missing = [], extra = [];
+  const missing = [];
+  const extra = [];
   Object.entries(mapping).forEach(([key, aliases]) => {
-    if (!aliases.some(a => headers.includes(a))) missing.push(`${key} (aliases: ${aliases.join(', ')})`);
+    if (!aliases.some(a => headers.includes(a))) {
+      missing.push(`${key} (aliases: ${aliases.join(', ')})`);
+    }
   });
   const allAliases = Object.values(mapping).flat();
-  headers.forEach(h => { if (!allAliases.includes(h)) extra.push(h); });
+  headers.forEach(h => {
+    if (!allAliases.includes(h)) extra.push(h);
+  });
   if (missing.length || extra.length) {
     let msg = '';
-    if (missing.length) msg += '**Missing columns:**\n' + missing.map(m=>`• ${m}`).join('\n');
-    if (extra.length) msg += (msg?'\n\n':'') + '**Unexpected columns:**\n' + extra.map(e=>`• ${e}`).join('\n');
+    if (missing.length) msg += '**Missing columns:**\n' + missing.map(m => `• ${m}`).join('\n');
+    if (extra.length) msg += (msg ? '\n\n' : '') + '**Unexpected columns:**\n' + extra.map(e => `• ${e}`).join('\n');
     throw new Error(msg);
   }
   return true;
@@ -58,11 +93,25 @@ function validateUploadColumns(data) {
 function exampleSnippet(ext) {
   switch (ext) {
     case 'csv':
-      return '**Example CSV format:**\nfrom_location,to_location,mode,weight_kg,eu,state\nCopenhagen,Berlin,road,100,yes,BE\n';
-    case 'xlsx': case 'xls':
-      return '**Example Excel headers (first row):**\nfrom_location | to_location | mode | weight_kg | eu | state\n(then data rows beneath)\n';
+      return (
+        '**Example CSV format:**\n' +
+        'from_location,to_location,mode,weight_kg,eu,state\n' +
+        'Copenhagen,Berlin,road,100,yes,BE\n'
+      );
+    case 'xlsx':
+    case 'xls':
+      return (
+        '**Example Excel headers (first row):**\n' +
+        'from_location | to_location | mode | weight_kg | eu | state\n' +
+        '(then data rows beneath)\n'
+      );
     case 'json':
-      return '**Example JSON format:**\n[\n  { "from_location": "Copenhagen", "to_location": "Berlin", "mode": "road", "weight_kg": 100, "eu": true, "state": "BE" }\n]\n';
+      return (
+        '**Example JSON format:**\n' +
+        '[\n' +
+        '  { "from_location": "Copenhagen", "to_location": "Berlin", "mode": "road", "weight_kg": 100, "eu": true, "state": "BE" }\n' +
+        ']\n'
+      );
     default:
       return '';
   }
@@ -86,7 +135,7 @@ export default function App() {
     setTimeout(() => setToast({ show:false, message:'' }), 7000);
   };
 
-  // fetch user once
+  // fetch auth info once
   useEffect(() => {
     fetch('/.auth/me')
       .then(res => { if (!res.ok) throw new Error(); return res.json(); })
@@ -94,128 +143,134 @@ export default function App() {
       .catch(() => setUser(null));
   }, []);
 
-  // handle rows
-  const handleChange = (i, f, v) => {
+  // Row handlers
+  const handleChange = (idx, field, value) => {
     const u = [...rows];
-    u[i][f] = v;
-    u[i].error = '';
+    u[idx][field] = value;
+    u[idx].error = '';
     setRows(u);
   };
   const addRow = () => setRows([...rows, { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
-  const removeRow = i => setRows(rows.filter((_,j)=>j!==i));
+  const removeRow = idx => setRows(rows.filter((_, i) => i !== idx));
 
-  // validate inputs
+  // Validate inputs
   const validate = () => {
     let ok = true;
-    const u = rows.map(rw => {
+    const u = rows.map(r => {
       const errs = [];
-      if (!rw.from) errs.push('Origin required');
-      if (!rw.to) errs.push('Destination required');
-      if (!rw.weight) errs.push('Weight required');
-      return { ...rw, error: errs.join(', ') };
+      if (!r.from) errs.push('Origin required');
+      if (!r.to) errs.push('Destination required');
+      if (!r.weight) errs.push('Weight required');
+      return { ...r, error: errs.join(', ') };
     });
     setRows(u);
-    if (u.some(rw=>rw.error)) { showToast('Please fix input errors'); ok = false; }
+    if (u.some(r => r.error)) {
+      showToast('Please fix input errors');
+      ok = false;
+    }
     return ok;
   };
 
-  // fetch history
+  // Fetch saved history
   const handleViewHistory = async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/GetCo2', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify([]),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([])
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setResults(data);
       showToast('Dine gemte beregninger er hentet');
-    } catch (err) {
-      showToast(err.message);
+    } catch (e) {
+      showToast(e.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // calculate + save
+  // Calculate & Save
   const handleCalculateAndSave = async () => {
     if (!validate()) return;
-    const payload = rows.map(rw => ({
-      from_location: rw.from,
-      to_location:   rw.to,
-      mode:          rw.mode,
-      weight_kg:     Number(rw.weight) || 0,
-      eu:            rw.eu,
-      state:         rw.state.trim().toLowerCase(),
+    const payload = rows.map(r => ({
+      from_location: r.from,
+      to_location:   r.to,
+      mode:          r.mode,
+      weight_kg:     Number(r.weight) || 0,
+      eu:            r.eu,
+      state:         r.state.trim().toLowerCase()
     }));
     setLoading(true);
     try {
-      // calculate
+      // 1) Calculate
       const calcRes = await fetch('/api/calculate-co2', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify(payload),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
       if (!calcRes.ok) throw new Error(await calcRes.text());
       const calcResults = await calcRes.json();
       setResults(calcResults);
-      // save
+
+      // 2) Save
       await fetch('/api/SaveCo2', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ results: calcResults }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results: calcResults })
       });
+
       showToast('Beregnet og gemt!');
-    } catch (err) {
-      showToast(err.message);
+    } catch (e) {
+      showToast(e.message);
     } finally {
       setLoading(false);
       setFileLoading(false);
     }
   };
 
-  // calculate only for uploads
+  // Calculate only (for file upload path)
   const calculateOnly = async payload => {
     setLoading(true);
     try {
       const res = await fetch('/api/calculate-co2', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify(payload),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
       if (!res.ok) throw new Error(await res.text());
       setResults(await res.json());
-    } catch (err) {
-      showToast(err.message);
+    } catch (e) {
+      showToast(e.message);
     } finally {
       setLoading(false);
       setFileLoading(false);
     }
   };
 
-  // file upload
+  // File upload handler
   const handleFileUpload = e => {
     const file = e.target.files[0];
     if (!file) return;
     setFileLoading(true);
     const ext = file.name.split('.').pop().toLowerCase();
     const reader = new FileReader();
+
     reader.onload = async ev => {
       let parsed = [];
       try {
         if (/\.(xlsx|xls)$/i.test(file.name)) {
           const data = new Uint8Array(ev.target.result);
-          const wb = XLSX.read(data,{type:'array'});
-          parsed = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+          const wb = XLSX.read(data, { type: 'array' });
+          parsed = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
         } else if (/\.csv$/i.test(file.name)) {
           const text = ev.target.result;
           const lines = text.trim().split('\n');
-          const keys = lines[0].split(',').map(h=>h.trim());
-          parsed = lines.slice(1).map(row=>{
-            const vals = row.split(',').map(v=>v.trim());
-            return Object.fromEntries(keys.map((k,i)=>[k,vals[i]]));
+          const keys = lines[0].split(',').map(h => h.trim());
+          parsed = lines.slice(1).map(row => {
+            const vals = row.split(',').map(v => v.trim());
+            return Object.fromEntries(keys.map((k, i) => [k, vals[i]]));
           });
         } else {
           parsed = JSON.parse(ev.target.result);
@@ -227,6 +282,7 @@ export default function App() {
         e.target.value = '';
         return;
       }
+
       try {
         validateUploadColumns(parsed);
       } catch (err) {
@@ -235,22 +291,25 @@ export default function App() {
         e.target.value = '';
         return;
       }
-      const payload = parsed.map(rw => ({
-        from_location: rw.from_location||rw.from||rw.origin,
-        to_location:   rw.to_location  ||rw.to  ||rw.destination,
-        mode:          rw.mode         ||rw.transport,
-        weight_kg:     Number(rw.weight_kg||rw.weight)||0,
-        eu:            String(rw.eu).toLowerCase()==='yes'||rw.eu===true,
-        state:         (rw.state||rw.state_code||'').toLowerCase(),
+
+      const payload = parsed.map(r => ({
+        from_location: r.from_location || r.from || r.origin,
+        to_location:   r.to_location   || r.to   || r.destination,
+        mode:          r.mode         || r.transport,
+        weight_kg:     Number(r.weight_kg || r.weight) || 0,
+        eu:            String(r.eu).toLowerCase() === 'yes' || r.eu === true,
+        state:         (r.state || r.state_code || '').toLowerCase()
       }));
+
       calculateOnly(payload);
       e.target.value = '';
     };
+
     if (/\.(xlsx|xls)$/i.test(file.name)) reader.readAsArrayBuffer(file);
-    else                                   reader.readAsText(file);
+    else reader.readAsText(file);
   };
 
-  // download or print
+  // Download / Print report
   const downloadReport = () => {
     if (!results.length) {
       showToast('No results to download');
@@ -259,12 +318,12 @@ export default function App() {
     if (['csv','xlsx'].includes(format)) {
       const wsData = [
         ['From','Used From','To','Used To','Mode','Distance','CO₂ (kg)','Error'],
-        ...results.map(r=>[
+        ...results.map(r => [
           r.from_input, r.from_used,
           r.to_input, r.to_used,
           r.mode, r.distance_km,
-          r.co2_kg, r.error||''
-        ]),
+          r.co2_kg, r.error || ''
+        ])
       ];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       const wb = XLSX.utils.book_new();
@@ -297,12 +356,11 @@ export default function App() {
     <th>From</th><th>Used From</th><th>To</th><th>Used To</th>
     <th>Mode</th><th>Distance</th><th>CO₂ (kg)</th><th>Error</th>
   </tr></thead><tbody>
-  ${results.map(r=>`
+  ${results.map(r => `
     <tr>
       <td>${r.from_input}</td><td>${r.from_used}</td>
       <td>${r.to_input}</td><td>${r.to_used}</td>
-      <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td>
-      <td>${r.error||''}</td>
+      <td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td><td>${r.error||''}</td>
     </tr>`).join('')}
   </tbody></table>
   <footer>© ${new Date().getFullYear()} CarbonRoute</footer>
@@ -313,6 +371,7 @@ export default function App() {
     }
   };
 
+  // Dummy stats for chart
   const statsData = [
     { name:'Jan', emissions:400 },
     { name:'Feb', emissions:320 },
@@ -325,11 +384,11 @@ export default function App() {
   return (
     <>
       {/* Login Modal */}
-      <Modal show={showLoginModal} onHide={()=>setShowLoginModal(false)} centered>
+      <Modal show={showLoginModal} onHide={() => setShowLoginModal(false)} centered>
         <Modal.Header closeButton><Modal.Title>Log ind for at prøve gratis</Modal.Title></Modal.Header>
         <Modal.Body>
           <p>Log ind med din Microsoft-konto for at prøve vores CO₂-calculator gratis.</p>
-          <Button variant="primary" onClick={()=>window.location.href='/.auth/login/aad?post_login_redirect=/'}>Log ind med Microsoft</Button>
+          <Button variant="primary" onClick={() => window.location.href = '/.auth/login/aad?post_login_redirect=/'}>Log ind med Microsoft</Button>
         </Modal.Body>
       </Modal>
 
@@ -344,16 +403,16 @@ export default function App() {
             {user ? (
               <>
                 <span className="me-3">Hello, {user.userDetails}</span>
-                <Button variant="outline-light" size="sm" onClick={()=>window.location.href='/.auth/logout'}>Logout</Button>
+                <Button variant="outline-light" size="sm" onClick={() => window.location.href='/.auth/logout'}>Logout</Button>
               </>
             ) : (
-              <Button variant="outline-light" size="sm" onClick={()=>setShowLoginModal(true)}>Login</Button>
+              <Button variant="outline-light" size="sm" onClick={() => setShowLoginModal(true)}>Login</Button>
             )}
           </Nav>
         </Container>
       </Navbar>
 
-      {/* Hero */}
+      {/* Hero Section */}
       <header className="hero bg-primary text-white text-center py-5">
         <Container>
           <h1 className="display-4 fw-bold">Mål. Reducér. Rapportér.</h1>
@@ -363,101 +422,139 @@ export default function App() {
               {loading ? <><Spinner size="sm" className="me-1"/>Henter…</> : 'Vis beregninger'}
             </Button>
           ) : (
-            <Button variant="light" size="lg" className="me-2" onClick={()=>setShowLoginModal(true)}>Prøv Gratis</Button>
+            <Button variant="light" size="lg" className="me-2" onClick={() => setShowLoginModal(true)}>Prøv Gratis</Button>
           )}
         </Container>
       </header>
 
       {/* Calculator Section */}
       <Container className="my-5">
-        <Card className="shadow-sm"><Card.Body>
-          <Card.Title className="text-success">Transport CO₂ Calculator</Card.Title>
+        <Card className="shadow-sm">
+          <Card.Body>
+            <Card.Title className="text-success">Transport CO₂ Calculator</Card.Title>
 
-          {/* Upload & Controls */}
-          <div className="mb-3 d-flex flex-wrap align-items-center">
-            <Form.Control type="file" accept=".csv,.json,.xlsx,.xls" onChange={handleFileUpload} id="file-upload" style={{display:'none'}}/>
-            <Button as="label" htmlFor="file-upload" variant="outline-success" className="me-2 mb-2">
-              {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>} Upload File
-            </Button>
-            <Dropdown onSelect={setFormat} className="me-2 mb-2">
-              <Dropdown.Toggle variant="outline-secondary">Format: {format.toUpperCase()}</Dropdown.Toggle>
-              <Dropdown.Menu>
-                {['pdf','xlsx','csv'].map(f=><Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>)}
-              </Dropdown.Menu>
-            </Dropdown>
-            <Button variant="success" onClick={downloadReport} className="mb-2"><FaDownload className="me-1"/> Download Report</Button>
-          </div>
-
-          {/* Desktop table */}
-          <div className="d-none d-md-block">
-            <Table bordered responsive className="align-middle brand-table">
-              <thead className="table-light"><tr>
-                <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th>Error</th><th></th>
-              </tr></thead>
-              <tbody>
-                {rows.map((r,i)=>(
-                  <tr key={i} className={r.error?'table-danger':''}>
-                    <td><Form.Control placeholder="City or Code" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)}/></td>                    <td><Form.Control placeholder="City or Code" value={r.to} onChange={e=>handleChange(i,'to',e.target.value)}/></td>
-                    <td><Form.Select value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}><option value="road">Road</option><option value="air">Air</option><option value="sea">Sea</option></Form.Select></td>
-                    <td><Form.Control type="number" placeholder="0" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)}/></td>
-                    <td className="text-center"><Form.Check checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)}/></td>
-                    <td><Form.Control placeholder="State-code" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)}/></td>
-                    <td>{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/>{r.error}</Badge>}</td>
-                    <td className="text-center"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash/></Button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </div>
-
-          {/* Mobile stacked */}
-          <div className="d-block d-md-none">
-            {rows.map((r,i)=>(
-              <Card key={i} className="mb-3 brand-card-mobile"><Card.Body>
-                <Form.Control className="mb-2" placeholder="From" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)}/>
-                <Form.Control className="mb-2" placeholder="To" value={r.to} onChange={e=>handleChange(i,'to',e.target.value)}/>
-                <Form.Select className="mb-2" value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}><option value="road">Road</option><option value="air">Air</option><option value="sea">Sea</option></Form.Select>
-                <Form.Control className="mb-2" type="number" placeholder="Weight (kg)" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)}/>
-                <div className="d-flex align-items-center mb-2"><Form.Check className="me-2" checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)}/><small>In EU</small></div>
-                <Form.Control className="mb-2" placeholder="State" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)}/>
-                {r.error && <Badge bg="danger" className="d-block mb-2">{r.error}</Badge>}
-                <div className="text-end"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash/></Button></div>
-              </Card.Body></Card>
-            ))}
-          </div>
-
-          <Row className="mt-3">
-            <Col><Button variant="outline-success" onClick={addRow}><FaUpload className="me-1"/> Add Row</Button></Col>
-            <Col className="text-end">
-              <Button variant="success" onClick={handleCalculateAndSave} disabled={loading}>
-                {loading ? <><Spinner size="sm" className="me-1"/>Calculating…</> : <><FaCalculator className="me-1"/>Calculate & Save</>}
+            {/* Upload & Controls */}
+            <div className="mb-3 d-flex flex-wrap align-items-center">
+              <Form.Control
+                type="file"
+                accept=".csv,.json,.xlsx,.xls"
+                onChange={handleFileUpload}
+                id="file-upload"
+                style={{ display:'none' }}
+              />
+              <Button as="label" htmlFor="file-upload" variant="outline-success" className="me-2 mb-2">
+                {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>}
+                Upload File
               </Button>
-            </Col>
-          </Row>
-        </Card.Body></Card>
+              <Dropdown onSelect={setFormat} className="me-2 mb-2">
+                <Dropdown.Toggle variant="outline-secondary">
+                  Format: {format.toUpperCase()}
+                </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  {['pdf','xlsx','csv'].map(f =>
+                    <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
+                  )}
+                </Dropdown.Menu>
+              </Dropdown>
+              <Button variant="success" onClick={downloadReport} className="mb-2">
+                <FaDownload className="me-1"/> Download Report
+              </Button>
+            </div>
+
+            {/* Desktop input table */}
+            <div className="d-none d-md-block">
+              <Table bordered responsive className="align-middle brand-table">
+                <thead className="table-light">
+                  <tr>
+                    <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
+                    <th>EU</th><th>State</th><th>Error</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r,i) => (
+                    <tr key={i} className={r.error?'table-danger':''}>
+                      <td><Form.Control placeholder="City or Code" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)}/></td>
+                      <td><Form.Control placeholder="City or Code" value={r.to}   onChange={e=>handleChange(i,'to',e.target.value)}/></td>
+                      <td>
+                        <Form.Select value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}>
+                          <option value="road">Road</option>
+                          <option value="air">Air</option>
+                          <option value="sea">Sea</option>
+                        </Form.Select>
+                      </td>
+                      <td><Form.Control type="number" placeholder="0" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)}/></td>
+                      <td className="text-center"><Form.Check checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)}/></td>
+                      <td><Form.Control placeholder="State-code" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)}/></td>
+                      <td>{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/>{r.error}</Badge>}</td>
+                      <td className="text-center"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash/></Button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+
+            {/* Mobile input cards */}
+            <div className="d-block d-md-none">
+              {rows.map((r,i) => (
+                <Card key={i} className="mb-3 brand-card-mobile">
+                  <Card.Body>
+                    <Form.Control className="mb-2" placeholder="From" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)}/>
+                    <Form.Control className="mb-2" placeholder="To"   value={r.to}   onChange={e=>handleChange(i,'to',e.target.value)}/>
+                    <Form.Select className="mb-2" value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}>
+                      <option value="road">Road</option>
+                      <option value="air">Air</option>
+                      <option value="sea">Sea</option>
+                    </Form.Select>
+                    <Form.Control className="mb-2" type="number" placeholder="Weight (kg)" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)}/>
+                    <div className="d-flex align-items-center mb-2">
+                      <Form.Check className="me-2" checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)}/>
+                      <small>In EU</small>
+                    </div>
+                    <Form.Control className="mb-2" placeholder="State" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)}/>
+                    {r.error && <Badge bg="danger" className="d-block mb-2">{r.error}</Badge>}
+                    <div className="text-end"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash/></Button></div>
+                  </Card.Body>
+                </Card>
+              ))}
+            </div>
+
+            <Row className="mt-3">
+              <Col><Button variant="outline-success" onClick={addRow}><FaUpload className="me-1"/> Add Row</Button></Col>
+              <Col className="text-end">
+                <Button variant="success" onClick={handleCalculateAndSave} disabled={loading}>
+                  {loading ? <><Spinner size="sm" className="me-1"/>Calculating…</> : <><FaCalculator className="me-1"/>Calculate & Save</>}
+                </Button>
+              </Col>
+            </Row>
+          </Card.Body>
+        </Card>
 
         {/* Results Table */}
-        {results.length>0 && (
-          <Card className="shadow-sm mt-4"><Card.Body>
-            <Card.Title className="text-success">Results</Card.Title>
-            <Table striped bordered hover responsive className="mt-3 brand-table">
-              <thead><tr>
-                <th>From (Used)</th><th>To (Used)</th><th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
-              </tr></thead>
-              <tbody>
-                {results.map((r,i)=>(
-                  <tr key={i} className={r.error?'table-danger':''}>
-                    <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
-                    <td>{r.to_input} <small className="text-muted">({r.to_used})</small></td>
-                    <td className="text-capitalize">{r.mode}</td>
-                    <td>{r.distance_km}</td>
-                    <td>{r.co2_kg}</td>
-                    <td>{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/>{r.error}</Badge>}</td>
+        {results.length > 0 && (
+          <Card className="shadow-sm mt-4">
+            <Card.Body>
+              <Card.Title className="text-success">Results</Card.Title>
+              <Table striped bordered hover responsive className="mt-3 brand-table">
+                <thead>
+                  <tr>
+                    <th>From (Used)</th><th>To (Used)</th><th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
                   </tr>
-                ))}
-              </tbody>
-            </Table>
-          </Card.Body></Card>
+                </thead>
+                <tbody>
+                  {results.map((r,i) => (
+                    <tr key={i} className={r.error?'table-danger':''}>
+                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
+                      <td>{r.to_input} <small className="text-muted">({r.to_used})</small></td>
+                      <td className="text-capitalize">{r.mode}</td>
+                      <td>{r.distance_km}</td>
+                      <td>{r.co2_kg}</td>
+                      <td>{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/>{r.error}</Badge>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Card.Body>
+          </Card>
         )}
       </Container>
 
@@ -468,29 +565,51 @@ export default function App() {
           <p className="text-muted">Alt du behøver til CO₂-rapportering</p>
         </Row>
         <Row>
-          <Col md={4} className="mb-4"><Card className="h-100 shadow-sm border-0"><Card.Body>
-            <Card.Title className="fw-bold text-primary">Bruger-venlig Input</Card.Title>
-            <Card.Text className="text-muted">Indtast start- og slutdestination med autocomplete, vægt og transporttype – vi guider dig!</Card.Text>
-          </Card.Body></Card></Col>
-          <Col md={4} className="mb-4"><Card className="h-100 shadow-sm border-0"><Card.Body>
-            <Card.Title className="fw-bold text-primary">Automatisk Beregning</Card.Title>
-            <Card.Text className="text-muted">Klik beregn, så bruger vi GHG-protokollen og opdaterede emissionsfaktorer for præcise resultater.</Card.Text>
-          </Card.Body></Card></Col>
-          <Col md={4} className="mb-4"><Card className="h-100 shadow-sm border-0"><Card.Body>
-            <Card.Title className="fw-bold text-primary">Rapporter & Eksport</Card.Title>
-            <Card.Text className="text-muted">Download rapporter i PDF/Excel eller del data med dit team direkte fra platformen.</Card.Text>
-          </Card.Body></Card></Col>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Bruger-venlig Input</Card.Title>
+                <Card.Text className="text-muted">
+                  Indtast start- og slutdestination med autocomplete, vægt og transporttype – vi guider dig!
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Automatisk Beregning</Card.Title>
+                <Card.Text className="text-muted">
+                  Klik beregn, så bruger vi GHG-protokollen og opdaterede emissionsfaktorer for præcise resultater.
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Rapporter & Eksport</Card.Title>
+                <Card.Text className="text-muted">
+                  Download rapporter i PDF/Excel eller del data med dit team direkte fra platformen.
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
         </Row>
       </Container>
 
       {/* Carousel */}
       <Container className="my-5">
         <h2 className="fw-bold text-center mb-4">Din rejse som leverandør</h2>
-        <Carousel controls indicators={false} interval={null}
-          prevIcon={<FaChevronLeft size={32} className="text-success"/>}
-          nextIcon={<FaChevronRight size={32} className="text-success"/>}
-          className="pb-4">
-          {[ 
+        <Carousel
+          controls
+          indicators={false}
+          interval={null}
+          prevIcon={<FaChevronLeft size={32} className="text-success" />}
+          nextIcon={<FaChevronRight size={32} className="text-success" />}
+          className="pb-4"
+        >
+          {[
             { icon:<FaUserPlus size={48} className="text-success"/>, title:'Opret konto', desc:'Gratis konto på 30 sekunder – kom i gang uden binding.' },
             { icon:<FaRoute size={48} className="text-success"/>, title:'Indtast data', desc:'Vælg transporttype, indtast rute & vægt – vi guider dig.' },
             { icon:<FaChartLine size={48} className="text-success"/>, title:'Se resultater', desc:'Interaktive grafer & tal for CO₂-udledning.' },
@@ -498,22 +617,23 @@ export default function App() {
             { icon:<FaTruck size={48} className="text-success"/>, title:'Optimer ruter', desc:'Identificér CO₂-tunge ruter & reducer omkostninger.' },
             { icon:<FaShip size={48} className="text-success"/>, title:'Multimodal', desc:'Overblik over vej, skib & luft i ét dashboard.' },
             { icon:<FaPlane size={48} className="text-success"/>, title:'Skaler til Pro', desc:'White-label rapporter, API-adgang & support.' }
-          ].reduce((slides, step, i, arr) => { if(i%2===0) slides.push(arr.slice(i,i+2)); return slides; },[])
-          .map((pair,idx)=>(
-            <Carousel.Item key={idx}>
-              <Row className="justify-content-center g-4">
-                {pair.map((step,j)=>(
-                  <Col xs={12} md={6} key={j}>
-                    <Card className="text-center border-0 shadow-sm p-4">
-                      {step.icon}
-                      <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title>
-                      <Card.Text className="text-muted">{step.desc}</Card.Text>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-            </Carousel.Item>
-          ))}
+          ]
+            .reduce((slides, step, i, arr) => { if (i % 2 === 0) slides.push(arr.slice(i, i+2)); return slides; }, [])
+            .map((pair, idx) => (
+              <Carousel.Item key={idx}>
+                <Row className="justify-content-center g-4">
+                  {pair.map((step, j) => (
+                    <Col xs={12} md={6} key={j}>
+                      <Card className="text-center border-0 shadow-sm p-4">
+                        {step.icon}
+                        <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title>
+                        <Card.Text className="text-muted">{step.desc}</Card.Text>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </Carousel.Item>
+            ))}
         </Carousel>
       </Container>
 
@@ -523,10 +643,10 @@ export default function App() {
           <h2 className="text-center mb-4">Månedlige Udsendelser</h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={statsData} margin={{ top:5, right:20, bottom:5, left:0 }}>
-              <CartesianGrid strokeDasharray="3 3"/>
-              <XAxis dataKey="name"/>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
               <YAxis label={{ value:'kg CO₂', angle:-90, position:'insideLeft' }}/>
-              <Tooltip/>
+              <Tooltip />
               <Line type="monotone" dataKey="emissions" stroke="#2a8f64" strokeWidth={3} dot={{ r:5 }}/>
             </LineChart>
           </ResponsiveContainer>
@@ -535,7 +655,7 @@ export default function App() {
 
       {/* Toast */}
       <ToastContainer position="bottom-end" className="p-3">
-        <Toast show={toast.show} bg="light" onClose={()=>setToast({ show:false, message:'' })}>
+        <Toast show={toast.show} bg="light" onClose={()=>setToast({show:false,message:''})}>
           <Toast.Header><strong className="me-auto text-success">Notice</strong></Toast.Header>
           <Toast.Body>{toast.message}</Toast.Body>
         </Toast>
