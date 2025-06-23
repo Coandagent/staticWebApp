@@ -1,5 +1,9 @@
 {
   "devDependencies": {
     "@azure/static-web-apps-cli": "^2.0.6"
+  },
+  "dependencies": {
+    "framer-motion": "^12.18.1",
+    "recharts": "^3.0.0"
   }
 }
