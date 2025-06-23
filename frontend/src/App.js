@@ -11,7 +11,7 @@ import { FaUserPlus, FaRoute, FaChartLine, FaHandshake, FaTruck, FaShip, FaPlane
 import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
 
-import { Container, Navbar, Nav, Button, Form, Table, Card, Dropdown, Row, Col, Carousel, Spinner, Toast, ToastContainer, Badge, } from 'react-bootstrap';
+import { Container, Navbar, Nav, Button, Form, Table, Card, Dropdown, Row, Col, Carousel, Spinner, Toast, ToastContainer, Badge, Modal } from 'react-bootstrap';
 
 import {
   FaUpload,
@@ -34,6 +34,9 @@ function validateUploadColumns(data) {
   if (!Array.isArray(data) || data.length === 0) {
     throw new Error('Uploaded file is empty or invalid');
   }
+
+
+
   const mapping = {
     from_location: ['from_location', 'from', 'origin', 'orig'],
     to_location:   ['to_location', 'to', 'destination', 'dest'],
@@ -115,6 +118,7 @@ export default function App() {
   const [loading, setLoading]         = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast]             = useState({ show:false, message:'' });
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const showToast = message => {
     setToast({ show:true, message });
@@ -317,34 +321,56 @@ export default function App() {
     { name: 'Jun', emissions: 430 },
   ];
 
-  return (
-    <>
-      {/* Navbar */}
-      <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
-        <Container fluid>
-          <Navbar.Brand className="d-flex align-items-center">
-            <img src={logo} alt="CarbonRoute" height="60" className="me-3"/> 
-            <span className="h4 mb-0">CarbonRoute ESG CO₂ Dashboard</span>
-          </Navbar.Brand>
-          <Nav className="ms-auto d-flex align-items-center">
-            {user ? (
-              <>
-                <span className="me-3">Hello, {user.userDetails}</span>
-                <Button variant="outline-light" size="sm" onClick={()=>window.location.href='/.auth/logout'}>Logout</Button>
-              </>
-            ) : (
-              <Button variant="outline-light" size="sm" onClick={()=>window.location.href='/.auth/login/aad'}>Login</Button>
-            )}
-          </Nav>
-        </Container>
-      </Navbar>
+return (
+  <>
+    {/* Login prompt for “Prøv Gratis” */}
+    <Modal show={showLoginModal} onHide={() => setShowLoginModal(false)} centered>
+      <Modal.Header closeButton>
+        <Modal.Title>Log ind for at prøve gratis</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <p>Log ind med din Microsoft-konto for at prøve vores CO₂-calculator gratis.</p>
+        <Button
+          variant="primary"
+          onClick={() => window.location.href = '/.auth/login/aad?post_login_redirect=/'}
+        >
+          Log ind med Microsoft
+        </Button>
+      </Modal.Body>
+    </Modal>
+
+    {/* Navbar */}
+    <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
+      <Container fluid>
+        <Navbar.Brand className="d-flex align-items-center">
+          <img src={logo} alt="CarbonRoute" height="60" className="me-3"/> 
+          <span className="h4 mb-0">CarbonRoute ESG CO₂ Dashboard</span>
+        </Navbar.Brand>
+        <Nav className="ms-auto d-flex align-items-center">
+          {user ? (
+            <>
+              <span className="me-3">Hello, {user.userDetails}</span>
+              <Button variant="outline-light" size="sm" onClick={() => window.location.href='/.auth/logout'}>
+                Logout
+              </Button>
+            </>
+          ) : (
+            <Button variant="outline-light" size="sm" onClick={() => window.location.href='/.auth/login/aad'}>
+              Login
+            </Button>
+          )}
+        </Nav>
+      </Container>
+    </Navbar>
 
       {/* Hero */}
       <header className="hero bg-primary text-white text-center py-5">
         <Container>
           <h1 className="display-4 fw-bold">Mål. Reducér. Rapportér.</h1>
           <p className="lead mb-4">Nem CO₂-beregning for transport i overensstemmelse med EU's ESG-krav — vej, sø og luft.</p>
-          <Button variant="light" size="lg" className="me-2">Prøv Gratis</Button>
+<Button variant="light" size="lg" className="me-2" onClick={() => setShowLoginModal(true)}>
+Prøv Gratis
+</Button>
           <Button variant="outline-light" size="lg">Book Demo</Button>
         </Container>
       </header>
