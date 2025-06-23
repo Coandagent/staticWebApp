@@ -1,3 +1,5 @@
 "staticwebapp.config.json" 
 "staticwebapp.config.json" 
 "staticwebapp.config.local.json" 
+"/api/local.settings.json"      
+"/api/calculate-co2/local.settings.json" 
