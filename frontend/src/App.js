@@ -7,7 +7,6 @@
 
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Row, Col } from 'react-bootstrap';
 import { FaUserPlus, FaRoute, FaChartLine, FaHandshake, FaTruck, FaShip, FaPlane } from 'react-icons/fa';
 import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
