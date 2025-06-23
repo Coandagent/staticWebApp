@@ -453,16 +453,71 @@ return (
               </Table>
             </div>
 
-            {/* Mobile stacked */}
-            <div className="d-block d-md-none">
-              {rows.map((r,i)=>(
-                <Card key={i} className="mb-3 brand-card-mobile">
-                  <Card.Body>
-                    {/* Mobile form unchanged */}
-                  </Card.Body>
-                </Card>
-              ))}
-            </div>
+{/* Mobile stacked */}
+<div className="d-block d-md-none">
+  {rows.map((r,i) => (
+    <Card key={i} className="mb-3 brand-card-mobile">
+      <Card.Body>
+        <Form.Control
+          className="mb-2"
+          placeholder="From"
+          value={r.from}
+          onChange={e => handleChange(i, 'from', e.target.value)}
+        />
+        <Form.Control
+          className="mb-2"
+          placeholder="To"
+          value={r.to}
+          onChange={e => handleChange(i, 'to', e.target.value)}
+        />
+        <Form.Select
+          className="mb-2"
+          value={r.mode}
+          onChange={e => handleChange(i, 'mode', e.target.value)}
+        >
+          <option value="road">Road</option>
+          <option value="air">Air</option>
+          <option value="sea">Sea</option>
+        </Form.Select>
+        <Form.Control
+          className="mb-2"
+          type="number"
+          placeholder="Weight (kg)"
+          value={r.weight}
+          onChange={e => handleChange(i, 'weight', e.target.value)}
+        />
+        <div className="d-flex align-items-center mb-2">
+          <Form.Check
+            className="me-2"
+            checked={r.eu}
+            onChange={e => handleChange(i, 'eu', e.target.checked)}
+          />
+          <small>In EU</small>
+        </div>
+        <Form.Control
+          className="mb-2"
+          placeholder="State"
+          value={r.state}
+          onChange={e => handleChange(i, 'state', e.target.value)}
+        />
+        {r.error && (
+          <Badge bg="danger" className="d-block mb-2">
+            {r.error}
+          </Badge>
+        )}
+        <div className="text-end">
+          <Button
+            variant="outline-danger"
+            size="sm"
+            onClick={() => removeRow(i)}
+          >
+            <FaTrash />
+          </Button>
+        </div>
+      </Card.Body>
+    </Card>
+  ))}
+</div>
 
             <Row className="mt-3">
               <Col><Button variant="outline-success" onClick={addRow}><FaUpload className="me-1"/> Add Row</Button></Col>
