@@ -557,10 +557,10 @@ return (
             <Row className="mt-3">
               <Col><Button variant="outline-success" onClick={addRow}><FaUpload className="me-1"/> Add Row</Button></Col>
               <Col className="text-end">
-                <Button variant="success" onClick={handleManualCalculate} disabled={loading}>
+                <Button variant="success" onClick={handleCalculateAndSave} disabled={loading}>
                   {loading
                     ? <><Spinner size="sm" className="me-1"/>Calculating…</>
-                    : <><FaCalculator className="me-1"/>Calculate</>
+                    : <><FaCalculator className="me-1"/>Calculate & Save</>
                   }
                 </Button>
               </Col>
