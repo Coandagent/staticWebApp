@@ -17,6 +17,7 @@ import {
   FaPlane,
   FaUpload,
   FaDownload,
+  FaQuestionCircle,
   FaCalculator,
   FaTrash,
   FaExclamationCircle,
@@ -131,7 +132,7 @@ export default function App() {
   const [fileLoading, setFileLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '' });
   const [showLoginModal, setShowLoginModal] = useState(false);
-
+  const [showGuide, setShowGuide] = useState(false);
   // History view state
   const [view, setView] = useState('calculator'); // "calculator" or "history"
   const [historyGroups, setHistoryGroups] = useState({});
@@ -474,7 +475,58 @@ export default function App() {
           </Button>
         </Modal.Body>
       </Modal>
+ {/* Guide / FAQ Modal */}
+      <Modal show={showGuide} onHide={() => setShowGuide(false)} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Kom godt i gang – CO₂ Calculator Guide</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <h5>1) Manuel indtastning af rejser («legs»)</h5>
+          <p>Hver «Journey» kan bestå af én eller flere segmenter (ben). Klik “+ Add Segment” for at tilføje flere ben.</p>
+          <ul>
+            <li><strong>From:</strong> Startsted</li>
+            <li><strong>To:</strong> Slutsted</li>
+            <li><strong>Mode:</strong> road / air / sea</li>
+            <li><strong>Weight (kg):</strong> Varenes vægt</li>
+            <li><strong>EU:</strong> Marker, hvis transporten er inden for EU</li>
+            <li><strong>State:</strong> Landekode (fx DK, DE, US)</li>
+          </ul>
+          <hr/>
 
+          <h5>2) Upload af fil</h5>
+          <p>Vi understøtter tre formater – se eksempler nedenfor.</p>
+
+          <h6>• CSV</h6>
+          <pre>
+from_location,to_location,mode,weight_kg,eu,state{'\n'}
+Copenhagen,Berlin,road,100,yes,DE{'\n'}
+Paris,London,air,50,no,GB
+          </pre>
+
+          <h6>• Excel (XLSX/XLS)</h6>
+          <p>Første række er kolonne-overskrifter:</p>
+          <pre>
+from_location | to_location | mode | weight_kg | eu | state{'\n'}
+Copenhagen     | Berlin      | road | 100       | yes| DE{'\n'}
+Paris          | London      | air  | 50        | no | GB
+          </pre>
+
+          <h6>• JSON</h6>
+          <pre>
+[  {'{'}"from_location":"Copenhagen","to_location":"Berlin","mode":"road","weight_kg":100,"eu":true,"state":"DE"{'}'},  {'{'}"from_location":"Paris","to_location":"London","mode":"air","weight_kg":50,"eu":false,"state":"GB"{'}'} ]
+          </pre>
+
+          <p>Filen må indeholde flere segmenter pr. rejse. Hvert segment bliver et ben i din CO₂-beregning.</p>
+
+          <hr/>
+          <h5>3) Download & Rapport</h5>
+          <p>Vælg PDF, XLSX eller CSV i dropdown og klik “Download Report” for at gemme dine resultater.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowGuide(false)}>Luk</Button>
+        </Modal.Footer>
+
+      </Modal>
       {/* Navbar */}
       <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
         <Container fluid>
@@ -483,6 +535,10 @@ export default function App() {
             <span className="h4 mb-0">CarbonRoute ESG CO₂ Dashboard</span>
           </Navbar.Brand>
           <Nav className="ms-auto d-flex align-items-center">
+            {/* Guide button */}
+            <Button variant="outline-light" size="sm" className="me-2" onClick={() => setShowGuide(true)}>
+              <FaQuestionCircle className="me-1"/> Guide
+            </Button>
             {user ? (
               <>
                 <span className="me-3">Hello, {user.userDetails}</span>
@@ -498,6 +554,7 @@ export default function App() {
           </Nav>
         </Container>
       </Navbar>
+
 
       {/* Hero Section */}
       <header className="hero bg-primary text-white text-center py-5">
