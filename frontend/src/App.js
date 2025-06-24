@@ -146,6 +146,8 @@ export default function App() {
   const [view, setView] = useState('calculator'); // "calculator" or "history"
   const [historyGroups, setHistoryGroups] = useState({});
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [eulaAccepted, setEulaAccepted] = useState(false);
+
 
   // Dummy stats for chart
   const statsData = [
@@ -402,7 +404,14 @@ const calculateOnly = async (rawRows) => {
 
 
 // Download / Print report - updated for legal compliance
-const downloadReport = () => {
+const downloadReport = async () => {
+  // 0) EULA guard
+  if (!eulaAccepted) {
+    showToast('Du skal acceptere vilkårene før eksport.');
+    return;
+  }
+
+  // 1) Gather data
   const dataToExport =
     view === 'history' && selectedGroup && selectedGroup.day
       ? historyGroups[selectedGroup.year][selectedGroup.month][selectedGroup.day]
@@ -413,19 +422,29 @@ const downloadReport = () => {
     return;
   }
 
-  // 1) Common compliance metadata
+  // 2) Compute SHA-256 hash of the JSON payload
+  const payloadString = JSON.stringify(dataToExport);
+  const hashBuffer = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(payloadString)
+  );
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const dataHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+  // 3) Build common metadata
   const meta = {
     generatedDate: new Date().toISOString(),
-    standard: 'GHG Protocol Transport Scope 3 Categories 4 & 9 (ISO 14083:2024)',
-    appVersion: '1.2.3',                  // bump to your actual version
-    user: user?.userDetails || 'Anonymous'
+    standard: 'GHG Protocol Transport Scope 3 Cat.4 & 9 (ISO 14083:2024)',
+    appVersion: '1.2.3',                       // bump as appropriate
+    user: user?.userDetails || 'Anonymous',
+    dataHash
   };
 
-  if (['csv','xlsx'].includes(format)) {
-    // ─── CSV / XLSX export with Metadata sheet ─────────────────────────────────
+  if (['csv', 'xlsx'].includes(format)) {
+    // ─── CSV / XLSX export ───────────────────────────────────────────────────────
     const wb = XLSX.utils.book_new();
 
-    // Results sheet
+    // 3a) Results sheet
     const wsData = [
       ['From','To','Mode','Distance (km)','Weight (kg)','EU','State','CO₂ (kg)'],
       ...dataToExport.map(r => [
@@ -442,12 +461,14 @@ const downloadReport = () => {
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(wb, ws, 'Results');
 
-    // Metadata sheet
-    const metaData = Object.entries(meta).map(([k, v]) => [k, v]);
-    const wsMeta = XLSX.utils.aoa_to_sheet([['Key','Value'], ...metaData]);
+    // 3b) Metadata sheet (hidden by default in Excel)
+    const metaEntries = Object.entries(meta).map(([k, v]) => [k, v]);
+    const wsMeta = XLSX.utils.aoa_to_sheet([['Key','Value'], ...metaEntries]);
+    // hide sheet when opened:
+    wsMeta['!sheetHidden'] = true;
     XLSX.utils.book_append_sheet(wb, wsMeta, 'Metadata');
 
-    // Write & download
+    // 3c) Write & trigger download
     const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const a = document.createElement('a');
@@ -458,16 +479,18 @@ const downloadReport = () => {
     document.body.removeChild(a);
 
   } else {
-    // ─── PDF export with header + disclaimer ────────────────────────────────────
+    // ─── PDF export ───────────────────────────────────────────────────────────────
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     doc.setFontSize(14);
     doc.text('CO₂-rapport', 40, 60);
+
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date(meta.generatedDate).toLocaleString()}`, 40, 80);
     doc.text(`Standard: ${meta.standard}`, 40, 95);
     doc.text(`User: ${meta.user}`, 40, 110);
+    doc.text(`Data SHA-256: ${meta.dataHash}`, 40, 125);
 
-    // AutoTable
+    // 4) Data table
     const head = [['From','To','Mode','Distance','Weight','EU','State','CO₂ (kg)']];
     const body = dataToExport.map(r => [
       r.from_input ?? r.from_location,
@@ -479,7 +502,45 @@ const downloadReport = () => {
       r.state?.toUpperCase() ?? '',
       r.co2_kg
     ]);
-    doc.autoTable({ startY: 130, head, body });
+    autoTable(doc, {
+      startY: 150,
+      head,
+      body,
+      styles: { fontSize: 9, cellPadding: 4 }
+    });
+
+    // 5) Methodology appendix
+    doc.addPage();
+    doc.setFontSize(12);
+    doc.text('Methodology & Emission Factors', 40, 60);
+    doc.setFontSize(10);
+    const methodologyLines = [
+      'Emission factors sourced from:',
+      '- EF Transport Road, CSRD v2.0, p.45',
+      '- EF Air & Sea, ESRS Guidelines 2024',
+      'Factor DB version: transport-factors-v1.4.2',
+      'Raw tables: https://example.com/factors'
+    ];
+    methodologyLines.forEach((line, i) =>
+      doc.text(line, 40, 80 + i * 15)
+    );
+
+    // 6) Disclaimer footer on appendix page
+    const disclaimer =
+      'Denne rapport er udarbejdet i overensstemmelse med GHG Protocol & ISO 14083:2024. ' +
+      'CarbonRoute påtager sig intet ansvar for forkerte input eller afvigelser i beregningsgrundlag.';
+    doc.setFontSize(8);
+    doc.text(disclaimer, 40, doc.internal.pageSize.height - 40, {
+      maxWidth: doc.internal.pageSize.width - 80
+    });
+
+    // 7) Stub: digital signature / timestamp
+    // TODO: send doc.output('arraybuffer') to your signing endpoint (e.g. node-signpdf)
+    // and replace this save() with the signed blob download.
+    doc.save('co2-report.pdf');
+  }
+};
+
 
     // Footer disclaimer
     const disclaimer =
@@ -723,30 +784,77 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
           <Card.Body>
             <Card.Title className="text-success">Transport CO₂ Calculator</Card.Title>
 
-            {/* Upload & Controls */}
-            <div className="mb-3 d-flex flex-wrap align-items-center">
-              <Form.Control type="file" accept=".csv,.json,.xlsx,.xls" onChange={handleFileUpload} id="file-upload" style={{ display:'none' }} />
-              <Button as="label" htmlFor="file-upload" variant="outline-success" className="me-2 mb-2">
-                {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>}
-                Upload fil
-              </Button>
-              <Dropdown onSelect={setFormat} className="me-2 mb-2">
-                <Dropdown.Toggle variant="outline-secondary">
-                  Format: {format.toUpperCase()}
-                </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  {['pdf','xlsx','csv'].map(f =>
-                    <Dropdown.Item key={f} eventKey={f}>{f.toUpperCase()}</Dropdown.Item>
-                  )}
-                </Dropdown.Menu>
-              </Dropdown>
-              <Button variant="success" onClick={downloadReport} className="mb-2">
-                <FaDownload className="me-1"/> Download Rapport
-              </Button>
-              <Button variant="outline-primary" className="mb-2 ms-auto" onClick={addRow}>
-                <FaCalculator className="me-1"/> Tilføj ny rejse
-              </Button>
-            </div>
+{/* Upload & Controls */}
+<div className="mb-3 d-flex flex-wrap align-items-center">
+  {/* hidden file input */}
+  <Form.Control
+    type="file"
+    accept=".csv,.json,.xlsx,.xls"
+    onChange={handleFileUpload}
+    id="file-upload"
+    style={{ display: 'none' }}
+  />
+
+  {/* Upload button */}
+  <Button
+    as="label"
+    htmlFor="file-upload"
+    variant="outline-success"
+    className="me-2 mb-2"
+  >
+    {fileLoading
+      ? <Spinner animation="border" size="sm" />
+      : <FaUpload className="me-1" />
+    }
+    Upload fil
+  </Button>
+
+  {/* Format dropdown */}
+  <Dropdown onSelect={setFormat} className="me-2 mb-2">
+    <Dropdown.Toggle variant="outline-secondary">
+      Format: {format.toUpperCase()}
+    </Dropdown.Toggle>
+    <Dropdown.Menu>
+      {['pdf', 'xlsx', 'csv'].map(f =>
+        <Dropdown.Item key={f} eventKey={f}>
+          {f.toUpperCase()}
+        </Dropdown.Item>
+      )}
+    </Dropdown.Menu>
+  </Dropdown>
+
+  {/* Download button, disabled until EULA checked */}
+  <Button
+    variant="success"
+    onClick={downloadReport}
+    disabled={!eulaAccepted}
+    className="mb-2"
+  >
+    <FaDownload className="me-1" />
+    Download Rapport
+  </Button>
+
+  {/* EULA checkbox */}
+  <Form.Group controlId="eulaCheckbox" className="mb-2 ms-3">
+    <Form.Check
+      type="checkbox"
+      label="Jeg bekræfter, at alle data er korrekte og accepterer vilkårene"
+      checked={eulaAccepted}
+      onChange={e => setEulaAccepted(e.target.checked)}
+    />
+  </Form.Group>
+
+  {/* Add new journey button */}
+  <Button
+    variant="outline-primary"
+    className="mb-2 ms-auto"
+    onClick={addRow}
+  >
+    <FaCalculator className="me-1" />
+    Tilføj ny rejse
+  </Button>
+</div>
+
 
             {/* Desktop Journeys */}
             <div className="d-none d-md-block">
