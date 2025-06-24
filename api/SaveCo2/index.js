@@ -27,19 +27,28 @@ module.exports = async function (context, req) {
     new AzureNamedKeyCredential(account, key)
   );
 
-  // 4) insert each result as a new row
+  // 4) insert each result as a new row, now including every field
   for (const r of arr) {
     const entry = {
       partitionKey: userId,
       rowKey:       r.timestamp || new Date().toISOString(),
+
+      // exactly what you show in the UI:
       from_input:   r.from_input,
       from_used:    r.from_used,
       to_input:     r.to_input,
       to_used:      r.to_used,
       mode:         r.mode,
       distance_km:  Number(r.distance_km),
-      co2_kg:       Number(r.co2_kg)
+      co2_kg:       Number(r.co2_kg),
+
+      // newly added so your table matches your “Results” view:
+      weight_kg:    Number(r.weight_kg ?? 0),
+      eu:           Boolean(r.eu),
+      state:        r.state            || '',
+      error:        r.error            || '',
     };
+
     await client.createEntity(entry);
   }
 
