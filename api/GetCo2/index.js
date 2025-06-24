@@ -1,3 +1,5 @@
+// GetCo2/index.js
+
 const { TableClient, AzureNamedKeyCredential } = require("@azure/data-tables");
 
 module.exports = async function (context, req) {
@@ -27,9 +29,8 @@ module.exports = async function (context, req) {
   for await (const e of client.listEntities({
     queryOptions: { filter: `PartitionKey eq '${userId}'` }
   })) {
-    // map each Azure Table entity → exactly the shape your front-end wants:
     entities.push({
-      timestamp:    e.rowKey,           // your row-timestamp
+      timestamp:    e.rowKey,           // row timestamp
       from_input:   e.from_input,
       from_used:    e.from_used,
       to_input:     e.to_input,
@@ -37,6 +38,8 @@ module.exports = async function (context, req) {
       mode:         e.mode,
       distance_km:  e.distance_km,
       co2_kg:       e.co2_kg,
+
+      // newly persisted fields:
       weight_kg:    e.weight_kg,
       eu:           e.eu,
       state:        e.state,

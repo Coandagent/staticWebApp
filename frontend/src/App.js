@@ -602,7 +602,6 @@ const downloadReport = () => {
         )}
       </Container>
 
-
 {/* History drill-down view */}
 {view === 'history' && (
   <Container className="my-5">
@@ -615,12 +614,12 @@ const downloadReport = () => {
       <>
         <h2 className="mt-4">Saved Calculations</h2>
         {Object.entries(historyGroups).map(([year, months]) => (
-          <div key={year} className="mb-4">
+          <div key={year} className="mb-3">
             <h4>{year}</h4>
             {Object.entries(months).map(([month, days]) => (
               <Badge
                 key={month}
-                bg="dark"
+                bg="primary"
                 className="me-2 mb-1"
                 style={{ cursor: 'pointer' }}
                 onClick={() => setSelectedGroup({ year, month })}
@@ -631,23 +630,26 @@ const downloadReport = () => {
           </div>
         ))}
       </>
-    ) 
+    )
 
     /* 2) Month selected but no day → list days */
     : selectedGroup && !selectedGroup.day ? (
       <>
-        <Button variant="link" onClick={() => setSelectedGroup(null)}>
-          ← Back to years
+        <Button
+          variant="link"
+          onClick={() => setSelectedGroup(null)}
+        >
+          ← Back to Years
         </Button>
         <h3 className="mt-3">
           {selectedGroup.month} {selectedGroup.year}
         </h3>
-        {Object.entries(
-          historyGroups?.[selectedGroup.year]?.[selectedGroup.month] || {}
-        ).map(([day, entries]) => (
+        {(Object.entries(
+          historyGroups[selectedGroup.year]?.[selectedGroup.month] || {}
+        )).map(([day, entries]) => (
           <Badge
             key={day}
-            bg="primary"
+            bg="secondary"
             className="me-2 mb-1"
             style={{ cursor: 'pointer' }}
             onClick={() =>
@@ -658,9 +660,9 @@ const downloadReport = () => {
           </Badge>
         ))}
       </>
-    ) 
+    )
 
-    /* 3) Day selected → show table */
+    /* 3) Day selected → show full table */
     : (
       <>
         <Button
@@ -689,7 +691,7 @@ const downloadReport = () => {
             </tr>
           </thead>
           <tbody>
-            {(historyGroups?.[selectedGroup.year]?.[selectedGroup.month]?.[selectedGroup.day] || [])
+            {(historyGroups[selectedGroup.year]?.[selectedGroup.month]?.[selectedGroup.day] || [])
               .map((r, i) => (
                 <tr key={i} className={r.error ? 'table-danger' : ''}>
                   <td>
@@ -722,6 +724,7 @@ const downloadReport = () => {
     )}
   </Container>
 )}
+
 
 
       {/* Feature Cards */}

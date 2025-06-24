@@ -1,3 +1,5 @@
+// SaveCo2/index.js
+
 const { TableClient, AzureNamedKeyCredential } = require("@azure/data-tables");
 
 module.exports = async function (context, req) {
@@ -7,7 +9,9 @@ module.exports = async function (context, req) {
     context.res = { status: 401, body: "Unauthorized" };
     return;
   }
-  const principal = JSON.parse(Buffer.from(principalHeader, "base64").toString("ascii"));
+  const principal = JSON.parse(
+    Buffer.from(principalHeader, "base64").toString("ascii")
+  );
   const userId = principal.userId;
 
   // 2) validate payload
@@ -45,8 +49,8 @@ module.exports = async function (context, req) {
       // newly added so your table matches your “Results” view:
       weight_kg:    Number(r.weight_kg ?? 0),
       eu:           Boolean(r.eu),
-      state:        r.state            || '',
-      error:        r.error            || '',
+      state:        String(r.state ?? ""),
+      error:        String(r.error ?? ""),
     };
 
     await client.createEntity(entry);
