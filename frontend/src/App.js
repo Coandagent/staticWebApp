@@ -13,8 +13,6 @@ import {
   FaChartLine,
   FaHandshake,
   FaTruck,
-  FaShip,
-  FaPlane,
   FaUpload,
   FaDownload,
   FaQuestionCircle,
