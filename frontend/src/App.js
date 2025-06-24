@@ -727,7 +727,6 @@ const downloadReport = () => {
   </Card>
 )}
 
-</Container>
 
 {/* History drill-down view */}
 {view === 'history' && (
@@ -759,7 +758,7 @@ const downloadReport = () => {
       </>
     )
 
-    /* 2) Month selected but no day → list days */
+    {/* 2) Month selected but no day → list days */}
     : selectedGroup && !selectedGroup.day ? (
       <>
         <Button
@@ -789,7 +788,7 @@ const downloadReport = () => {
       </>
     )
 
-    /* 3) Day selected → show full table */
+    {/* 3) Day selected → show full table */}
     : (
       <>
         <Button
