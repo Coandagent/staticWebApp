@@ -147,6 +147,8 @@ export default function App() {
   const [historyGroups, setHistoryGroups] = useState({});
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [eulaAccepted, setEulaAccepted] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
 
 
   // Dummy stats for chart
@@ -707,6 +709,7 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
   </Modal.Footer>
 </Modal>
 
+
       {/* Navbar */}
       <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
         <Container fluid>
@@ -845,14 +848,21 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
     Download Rapport
   </Button>
 
-  {/* EULA checkbox */}
+ {/* EULA checkbox + link */}
   <Form.Group controlId="eulaCheckbox" className="mb-2 ms-3">
-    <Form.Check
-      type="checkbox"
-      label="Jeg bekræfter, at alle data er korrekte og accepterer vilkårene"
-      checked={eulaAccepted}
-      onChange={e => setEulaAccepted(e.target.checked)}
-    />
+    <div className="d-flex align-items-center">
+      <Form.Check
+        type="checkbox"
+        checked={eulaAccepted}
+        onChange={e => setEulaAccepted(e.target.checked)}
+      />
+      <Form.Label className="ms-2 mb-0">
+        Jeg bekræfter, at alle data er korrekte og accepterer&nbsp;
+        <Button variant="link" size="sm" onClick={() => setShowTermsModal(true)}>
+          vilkår & betingelser
+        </Button>
+      </Form.Label>
+    </div>
   </Form.Group>
 
   {/* Add new journey button */}
@@ -1382,10 +1392,48 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
         </Toast>
       </ToastContainer>
 
-      {/* Footer */}
-      <footer className="bg-white py-4 text-center brand-footer">
-        <small className="text-muted">© {new Date().getFullYear()} CarbonRoute – Mål. Reducér. Rapportér.</small>
-      </footer>
+      {/* Vilkår & Betingelser Modal */}
+      <Modal
+        show={showTermsModal}
+        onHide={() => setShowTermsModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Vilkår og Betingelser</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          <h6>1. Indledning</h6>
+          <p>Disse vilkår gælder for brug af CarbonRoute CO₂-beregneren …</p>
+          <h6>2. Tjenestebeskrivelse</h6>
+          <p>…</p>
+          <h6>3. Accept af EULA</h6>
+          <p>…</p>
+          {/* fortsæt med alle sektioner */}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowTermsModal(false)}>
+            Luk
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+
+{/* Footer */}
+<footer className="bg-white py-4 text-center brand-footer">
+  <small className="text-muted">
+    © {new Date().getFullYear()} CarbonRoute – Mål. Reducér. Rapportér.{' '}
+    <Button
+      variant="link"
+      size="sm"
+      onClick={() => setShowTermsModal(true)}
+      className="p-0 align-baseline"
+    >
+      Vilkår &amp; Betingelser
+    </Button>
+  </small>
+</footer>
+
     </>
   );
 }
