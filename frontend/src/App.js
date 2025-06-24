@@ -32,6 +32,9 @@ import {
 import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
 
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
 import {
   Container,
   Navbar,
