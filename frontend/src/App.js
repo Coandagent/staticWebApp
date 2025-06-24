@@ -513,36 +513,16 @@ const calculateOnly = async (rawRows) => {
       <Col xs={10}>
         <h5>1) Manuel indtastning</h5>
         <p>
-          Opret én eller flere “legs” (segmenter) pr. rejse. Klik{' '}
-          <Badge bg="secondary">+ Tilføj segment</Badge> for at tilføje.
+          Opret ét eller flere segmenter for hver rejse. Klik{' '}
+          <Badge bg="secondary">+ Tilføj segment</Badge> for at tilføje flere.
         </p>
         <ListGroup variant="flush">
-          <ListGroup.Item>
-            <FaMapMarkerAlt className="me-2 text-secondary" />
-            <strong>Fra:</strong> Afsendelsessted
-          </ListGroup.Item>
-          <ListGroup.Item>
-            <FaMapMarkerAlt className="me-2 text-secondary" />
-            <strong>Til:</strong> Destination
-          </ListGroup.Item>
-          <ListGroup.Item>
-            <FaTruck className="me-2 text-secondary" />
-            <strong>Transporttype:</strong>{' '}
-            <code>vej</code>, <code>luft</code> (<FaPlane />), eller{' '}
-            <code>sø</code> (<FaShip />)
-          </ListGroup.Item>
-          <ListGroup.Item>
-            <FaWeight className="me-2 text-secondary" />
-            <strong>Vægt (kg):</strong> Vægt på godset
-          </ListGroup.Item>
-          <ListGroup.Item>
-            <FaCheckCircle className="me-2 text-secondary" />
-            <strong>EU:</strong> Marker hvis inden for EU
-          </ListGroup.Item>
-          <ListGroup.Item>
-            <FaTimesCircle className="me-2 text-secondary" />
-            <strong>Region (valgfri):</strong> Kun for USA eller andre regioner med delstats-/provinskoder
-          </ListGroup.Item>
+          <ListGroup.Item><FaMapMarkerAlt className="me-2 text-secondary" /><strong>Fra:</strong> Afsendelsessted</ListGroup.Item>
+          <ListGroup.Item><FaMapMarkerAlt className="me-2 text-secondary" /><strong>Til:</strong> Destination</ListGroup.Item>
+          <ListGroup.Item><FaTruck className="me-2 text-secondary" /><strong>Transporttype:</strong> <code>vej</code>, <code>luft</code>, <code>sø</code></ListGroup.Item>
+          <ListGroup.Item><FaWeight className="me-2 text-secondary" /><strong>Vægt (kg):</strong> Gods’ vægt</ListGroup.Item>
+          <ListGroup.Item><FaCheckCircle className="me-2 text-secondary" /><strong>EU:</strong> Marker hvis inden for EU</ListGroup.Item>
+          <ListGroup.Item><FaTimesCircle className="me-2 text-secondary" /><strong>Region:</strong> Valgfri stat/provinskode</ListGroup.Item>
         </ListGroup>
       </Col>
     </Row>
@@ -556,34 +536,27 @@ const calculateOnly = async (rawRows) => {
       <Col xs={10}>
         <h5>2) Upload fil</h5>
         <p>Understøttede formater: CSV, Excel eller JSON. Eksempler:</p>
-
         <h6><FaFileCsv className="me-2" />CSV</h6>
         <pre className="bg-light p-2 rounded">
 from_location,to_location,mode,weight_kg,eu,state{"\n"}
-Copenhagen,Berlin,road,100,yes,DE{"\n"}
-Paris,London,air,50,no,GB
+Copenhagen,Berlin,road,100,yes,DE
         </pre>
-
         <h6><FaFileExcel className="me-2" />Excel (XLSX/XLS)</h6>
         <pre className="bg-light p-2 rounded">
-from_location | to_location | mode  | weight_kg | eu  | state{"\n"}
-Copenhagen     | Berlin      | road  | 100       | yes | DE{"\n"}
-Paris          | London      | air   | 50        | no  | GB
+from_location | to_location | mode | weight_kg | eu | state{"\n"}
+Copenhagen     | Berlin      | road | 100       | yes| DE
         </pre>
-
         <h6><FaFileCode className="me-2" />JSON</h6>
         <pre className="bg-light p-2 rounded">
-[{"{"}"from_location":"Copenhagen","to_location":"Berlin","mode":"road","weight_kg":100,"eu":true,"state":"DE"{"}"},
- {"{"}"from_location":"Paris","to_location":"London","mode":"air","weight_kg":50,"eu":false,"state":"GB"{"}"}]
+[{"{"}"from_location":"Copenhagen","to_location":"Berlin","mode":"road","weight_kg":100,"eu":true,"state":"DE"{"}"}]
         </pre>
-
-        <p>Hver række/objekt bliver til ét segment—du kan have flere segmenter i én fil.</p>
+        <p>Hver række eller objekt bliver til ét segment – du kan have flere i samme fil.</p>
       </Col>
     </Row>
     <hr/>
 
     {/* 3) Download & rapport */}
-    <Row>
+    <Row className="mb-4">
       <Col xs={2} className="text-center">
         <FaCheckCircle size={36} className="text-success" />
       </Col>
@@ -591,8 +564,24 @@ Paris          | London      | air   | 50        | no  | GB
         <h5>3) Download & rapport</h5>
         <p>
           Vælg format (PDF, XLSX eller CSV) i dropdown, og klik på{' '}
-          <Badge bg="success"><FaDownload /></Badge> “Download rapport” for at gemme dine resultater.
+          <Badge bg="success"><FaDownload /></Badge> for at gemme din rapport.
         </p>
+      </Col>
+    </Row>
+    <hr/>
+
+    {/* 4) Find & administrer gemte beregninger */}
+    <Row>
+      <Col xs={2} className="text-center">
+        <FaChartLine size={36} className="text-primary" />
+      </Col>
+      <Col xs={10}>
+        <h5>4) Find gemte beregninger</h5>
+        <ol>
+          <li>Tryk på “Vis beregninger” i topmenuen for at åbne historikken.</li>
+          <li>Vælg år, derefter måned, og til sidst dato for at se præcis de beregninger.</li>
+          <li>Brug skraldespands-ikonet ud for en række til at slette netop den beregning.</li>
+        </ol>
       </Col>
     </Row>
   </Modal.Body>
@@ -600,7 +589,6 @@ Paris          | London      | air   | 50        | no  | GB
     <Button variant="secondary" onClick={() => setShowGuide(false)}>Luk</Button>
   </Modal.Footer>
 </Modal>
-
 
       {/* Navbar */}
       <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
