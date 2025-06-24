@@ -407,7 +407,7 @@ const calculateOnly = async (rawRows) => {
         : results;
 
     if (!dataToExport || dataToExport.length === 0) {
-      showToast('No results to download');
+      showToast('Ingen resultater at downloade');
       return;
     }
 
@@ -436,7 +436,7 @@ const calculateOnly = async (rawRows) => {
     } else {
       const win = window.open('', '_blank');
       win.document.write(
-        `<!doctype html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
+        `<!doctype html><html><head><meta charset="utf-8"><title>CO₂-rapport</title>
         <style>body{font-family:sans-serif;margin:40px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#004080;color:white}</style>
         </head><body><h1>CO₂ Report</h1><p>${new Date().toLocaleDateString()}</p>
         <table><thead><tr><th>From</th><th>To</th><th>Mode</th><th>Distance</th><th>CO₂ (kg)</th></tr></thead><tbody>
@@ -612,14 +612,14 @@ Paris          | London      | air   | 50        | no  | GB
  
             {user ? (
               <>
-                <span className="me-3">Hello, {user.userDetails}</span>
+                <span className="me-3">Hej, {user.userDetails}</span>
                 <Button variant="outline-light" size="sm" onClick={() => window.location.href='/.auth/logout'}>
-                  Logout
+                  Log ud
                 </Button>
               </>
             ) : (
               <Button variant="outline-light" size="sm" onClick={() => setShowLoginModal(true)}>
-                Login
+                Log ind
               </Button>
             )}
           </Nav>
@@ -691,7 +691,7 @@ Paris          | London      | air   | 50        | no  | GB
               <Form.Control type="file" accept=".csv,.json,.xlsx,.xls" onChange={handleFileUpload} id="file-upload" style={{ display:'none' }} />
               <Button as="label" htmlFor="file-upload" variant="outline-success" className="me-2 mb-2">
                 {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>}
-                Upload File
+                Upload fil
               </Button>
               <Dropdown onSelect={setFormat} className="me-2 mb-2">
                 <Dropdown.Toggle variant="outline-secondary">
@@ -704,10 +704,10 @@ Paris          | London      | air   | 50        | no  | GB
                 </Dropdown.Menu>
               </Dropdown>
               <Button variant="success" onClick={downloadReport} className="mb-2">
-                <FaDownload className="me-1"/> Download Report
+                <FaDownload className="me-1"/> Download Rapport
               </Button>
               <Button variant="outline-primary" className="mb-2 ms-auto" onClick={addRow}>
-                <FaCalculator className="me-1"/> New Journey
+                <FaCalculator className="me-1"/> Tilføj ny rejse
               </Button>
             </div>
 
@@ -718,14 +718,14 @@ Paris          | London      | air   | 50        | no  | GB
                   <div className="d-flex justify-content-end mb-2">
                     {rows.length > 1 && (
                       <Button variant="outline-danger" size="sm" onClick={() => removeRow(ri)}>
-                        Remove Journey
+                        Fjern rejse
                       </Button>
                     )}
                   </div>
                   <Table bordered responsive className="align-middle brand-table">
                     <thead className="table-light">
                       <tr>
-                        <th>#</th><th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
+                        <th>#</th><th>From</th><th>To</th><th>Mode</th><th>Vægt (kg)</th><th>EU</th><th>State</th><th></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -790,7 +790,7 @@ Paris          | London      | air   | 50        | no  | GB
                     <tfoot>
                       <tr>
                         <td colSpan={8} className="text-end">
-                          <Button size="sm" onClick={() => addSegment(ri)}>+ Add Segment</Button>
+                          <Button size="sm" onClick={() => addSegment(ri)}>+ Tilføj segment</Button>
                         </td>
                       </tr>
                     </tfoot>
@@ -882,7 +882,7 @@ Paris          | London      | air   | 50        | no  | GB
         {results.length > 0 && (
           <Card className="shadow-sm mt-4">
             <Card.Body>
-              <Card.Title className="text-success">Results</Card.Title>
+              <Card.Title className="text-success">Resultater</Card.Title>
               <Table striped bordered hover responsive className="mt-3 brand-table">
                 <thead>
                   <tr>
