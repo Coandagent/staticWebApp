@@ -122,27 +122,34 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   // UI state
-// UI state
-const [rows, setRows] = useState([{ stops: [{ location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }, { location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }], error: '' }]);
-
+  const [rows, setRows] = useState([
+    {
+      stops: [
+        { location: '', mode: 'road', weight: '', eu: true, state: '', error: '' },
+        { location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }
+      ],
+      error: ''
+    }
+  ]);
   const [results, setResults] = useState([]);
   const [format, setFormat] = useState('pdf');
   const [loading, setLoading] = useState(false);
   const [fileLoading, setFileLoading] = useState(false);
-  const [toast, setToast] = useState({ show:false, message:'' });
+  const [toast, setToast] = useState({ show: false, message: '' });
   const [showLoginModal, setShowLoginModal] = useState(false);
-// above everything in App():
-const [view, setView] = useState('calculator');         // "calculator" or "history"
-const [historyGroups, setHistoryGroups] = useState({}); // { [year]: { [month]: [entries]}}
-const [selectedGroup, setSelectedGroup] = useState(null);
-// where selectedGroup is either null or { year, month }
 
+  // History view state
+  const [view, setView] = useState('calculator');         // "calculator" or "history"
+  const [historyGroups, setHistoryGroups] = useState({}); // { [year]: { [month]: { [day]: [entries] } } }
+  const [selectedGroup, setSelectedGroup] = useState(null);
+
+  // Toast helper
   const showToast = message => {
-    setToast({ show:true, message });
-    setTimeout(() => setToast({ show:false, message:'' }), 7000);
+    setToast({ show: true, message });
+    setTimeout(() => setToast({ show: false, message: '' }), 7000);
   };
 
-  // fetch auth info once
+  // Fetch auth info once
   useEffect(() => {
     fetch('/.auth/me')
       .then(res => { if (!res.ok) throw new Error(); return res.json(); })
@@ -150,160 +157,174 @@ const [selectedGroup, setSelectedGroup] = useState(null);
       .catch(() => setUser(null));
   }, []);
 
-  // Row handlers
-  const handleChange = (idx, field, value) => {
-    const u = [...rows];
-    u[idx][field] = value;
-    u[idx].error = '';
-    setRows(u);
+  // Row & Stop handlers
+  const handleStopChange = (rowIdx, stopIdx, field, value) => {
+    const allRows = [...rows];
+    allRows[rowIdx].stops[stopIdx][field] = value;
+    allRows[rowIdx].stops[stopIdx].error = '';
+    setRows(allRows);
   };
-  const addRow = () => setRows([...rows, { from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
-  const removeRow = idx => setRows(rows.filter((_, i) => i !== idx));
+
+  const addStop = rowIdx => {
+    const allRows = [...rows];
+    allRows[rowIdx].stops.push({ location: '', mode: 'road', weight: '', eu: true, state: '', error: '' });
+    setRows(allRows);
+  };
+
+  const removeStop = (rowIdx, stopIdx) => {
+    const allRows = [...rows];
+    allRows[rowIdx].stops.splice(stopIdx, 1);
+    setRows(allRows);
+  };
+
+  const addRow = () => {
+    setRows([...rows, {
+      stops: [
+        { location: '', mode: 'road', weight: '', eu: true, state: '', error: '' },
+        { location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }
+      ],
+      error: ''
+    }]);
+  };
+
+  const removeRow = idx => {
+    setRows(rows.filter((_, i) => i !== idx));
+  };
 
   // Validate inputs
   const validate = () => {
     let ok = true;
-    const u = rows.map(r => {
+    const updated = rows.map(row => {
       const errs = [];
-      if (!r.from) errs.push('Origin required');
-      if (!r.to) errs.push('Destination required');
-      if (!r.weight) errs.push('Weight required');
-      return { ...r, error: errs.join(', ') };
+      row.stops.forEach(stop => {
+        if (!stop.location) errs.push('Location required');
+        if (!stop.weight) errs.push('Weight required');
+      });
+      return { ...row, error: errs.join(', ') };
     });
-    setRows(u);
-    if (u.some(r => r.error)) {
+    setRows(updated);
+    if (updated.some(r => r.error)) {
       showToast('Please fix input errors');
       ok = false;
     }
     return ok;
   };
 
-  // Fetch saved history
-const handleViewHistory = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch('/api/GetCo2', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify([]),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const data = await res.json();
-
-    // 2a) Group by year/month
-    const groups = {};
-    for (const entry of data) {
-      // use a timestamp field or rowKey
-      const ts = entry.timestamp || entry.rowKey || new Date().toISOString();
-      const d  = new Date(ts);
-      const yr = d.getFullYear();
-      const mo = d.toLocaleString('default', { month: 'long' });
-      const day = d.getDate();
-      groups[yr]        = groups[yr]        || {};
-      groups[yr][mo]    = groups[yr][mo]    || {};
-      groups[yr][mo][day] = groups[yr][mo][day] || [];
-      groups[yr][mo][day].push(entry);
-    }
-
-    setHistoryGroups(groups);
-    setSelectedGroup(null);
-    setView('history');
-  } catch (e) {
-    showToast(e.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
-// Calculate & Save
-const handleCalculateAndSave = async () => {
-  if (!validate()) return;
-
-  // Flatten each journey's stops into individual legs
-  const payload = rows.flatMap(row => {
-    const legs = [];
-    for (let i = 0; i < row.stops.length - 1; i++) {
-      const from = row.stops[i];
-      const to   = row.stops[i + 1];
-      legs.push({
-        from_location: from.location,
-        to_location:   to.location,
-        mode:          to.mode,                   // mode of that leg
-        weight_kg:     Number(to.weight) || 0,
-        eu:            Boolean(to.eu),
-        state:         (to.state || '').trim().toLowerCase()
+  // View history handler
+  const handleViewHistory = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/GetCo2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([])
       });
-    }
-    return legs;
-  });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
 
-  setLoading(true);
-  try {
-    // 1) Calculate
-    const calcRes = await fetch('/api/calculate-co2', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!calcRes.ok) throw new Error(await calcRes.text());
-    const calcResults = await calcRes.json();
-    setResults(calcResults);
-
-    // 2) Save
-    await fetch('/api/SaveCo2', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ results: calcResults })
-    });
-
-    showToast('Beregnet og gemt!');
-  } catch (e) {
-    showToast(e.message);
-  } finally {
-    setLoading(false);
-    setFileLoading(false);
-  }
-};
-
-
-// Calculate only (for file upload path)
-const calculateOnly = async rawRows => {
-  // Transform uploaded rows into flattened legs, same as the calculator
-  const payload = rawRows.flatMap(row => {
-    const legs = [];
-    for (let i = 0; i < row.stops.length - 1; i++) {
-      const from = row.stops[i];
-      const to   = row.stops[i + 1];
-      legs.push({
-        from_location: from.location,
-        to_location:   to.location,
-        mode:          to.mode,
-        weight_kg:     Number(to.weight) || 0,
-        eu:            Boolean(to.eu),
-        state:         (to.state || '').trim().toLowerCase()
+      // Group by year/month/day
+      const groups = {};
+      data.forEach(entry => {
+        const ts = entry.timestamp || entry.rowKey || new Date().toISOString();
+        const d = new Date(ts);
+        const yr = d.getFullYear();
+        const mo = d.toLocaleString('default', { month: 'long' });
+        const day = d.getDate();
+        groups[yr] = groups[yr] || {};
+        groups[yr][mo] = groups[yr][mo] || {};
+        groups[yr][mo][day] = groups[yr][mo][day] || [];
+        groups[yr][mo][day].push(entry);
       });
+
+      setHistoryGroups(groups);
+      setSelectedGroup(null);
+      setView('history');
+    } catch (e) {
+      showToast(e.message);
+    } finally {
+      setLoading(false);
     }
-    return legs;
-  });
+  };
 
-  setLoading(true);
-  try {
-    const res = await fetch('/api/calculate-co2', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error(await res.text());
-    setResults(await res.json());
-  } catch (e) {
-    showToast(e.message);
-  } finally {
-    setLoading(false);
-    setFileLoading(false);
-  }
-};
+  // Calculate & save
+  const handleCalculateAndSave = async () => {
+    if (!validate()) return;
 
+    // Flatten stops → legs
+    const payload = rows.flatMap(row =>
+      row.stops.slice(0, -1).map((from, i) => {
+        const to = row.stops[i + 1];
+        return {
+          from_location: from.location,
+          to_location:   to.location,
+          mode:          to.mode,
+          weight_kg:     Number(to.weight) || 0,
+          eu:            Boolean(to.eu),
+          state:         (to.state || '').trim().toLowerCase()
+        };
+      })
+    );
 
+    setLoading(true);
+    try {
+      // 1) Calculate
+      const calcRes = await fetch('/api/calculate-co2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!calcRes.ok) throw new Error(await calcRes.text());
+      const calcResults = await calcRes.json();
+      setResults(calcResults);
+
+      // 2) Save
+      await fetch('/api/SaveCo2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results: calcResults })
+      });
+
+      showToast('Beregnet og gemt!');
+    } catch (e) {
+      showToast(e.message);
+    } finally {
+      setLoading(false);
+      setFileLoading(false);
+    }
+  };
+
+  // Calculate only (file upload)
+  const calculateOnly = async rawRows => {
+    const payload = rawRows.flatMap(row =>
+      row.stops.slice(0, -1).map((from, i) => {
+        const to = row.stops[i + 1];
+        return {
+          from_location: from.location,
+          to_location:   to.location,
+          mode:          to.mode,
+          weight_kg:     Number(to.weight) || 0,
+          eu:            Boolean(to.eu),
+          state:         (to.state || '').trim().toLowerCase()
+        };
+      })
+    );
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/calculate-co2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setResults(await res.json());
+    } catch (e) {
+      showToast(e.message);
+    } finally {
+      setLoading(false);
+      setFileLoading(false);
+    }
+  };
 
   // File upload handler
   const handleFileUpload = e => {
@@ -357,7 +378,7 @@ const calculateOnly = async rawRows => {
         state:         (r.state || r.state_code || '').toLowerCase()
       }));
 
-      calculateOnly(payload);
+      calculateOnly([{ stops: payload }]);
       e.target.value = '';
     };
 
@@ -366,88 +387,82 @@ const calculateOnly = async rawRows => {
   };
 
   // Download / Print report
- // ——————————————————————————————————————————————————————————————
-// Replace your entire downloadReport with this:
+  const downloadReport = () => {
+    const dataToExport =
+      view === 'history' && selectedGroup
+        ? historyGroups[selectedGroup.year][selectedGroup.month][selectedGroup.day]
+        : results;
 
-const downloadReport = () => {
-  // 1) Choose which data to export:
-  const dataToExport =
-    view === 'history' && selectedGroup
-      ? historyGroups[selectedGroup.year][selectedGroup.month]
-      : results;
+    if (!dataToExport || dataToExport.length === 0) {
+      showToast('No results to download');
+      return;
+    }
 
-  if (!dataToExport || dataToExport.length === 0) {
-    showToast('No results to download');
-    return;
-  }
-
-  // 2) CSV / XLSX path
-  if (['csv','xlsx'].includes(format)) {
-    // build header + rows
-    const wsData = [
-      ['From','To','Mode','Distance','CO₂ (kg)'],
-      ...dataToExport.map(r => [
-        r.from_input ?? r.from_location,
-        r.to_input   ?? r.to_location,
-        r.mode,
-        r.distance_km,
-        r.co2_kg
-      ])
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Report');
-    const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
-    const blob = new Blob([wbout], { type: 'application/octet-stream' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `co2-report.${format}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-  // 3) PDF/print path
-  } else {
-    const win = window.open('', '_blank');
-    win.document.write(`
-      <!doctype html>
-      <html><head>
-        <meta charset="utf-8">
-        <title>CO₂ Report</title>
-        <style>
-          body { font-family: sans-serif; margin: 40px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-          th { background: #004080; color: white; }
-        </style>
-      </head><body>
-        <h1>CO₂ Report</h1>
-        <p>${new Date().toLocaleDateString()}</p>
-        <table>
-          <thead>
-            <tr>
-              <th>From</th><th>To</th><th>Mode</th><th>Distance</th><th>CO₂ (kg)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${dataToExport.map(r => `
+    if (['csv','xlsx'].includes(format)) {
+      // build sheet
+      const wsData = [
+        ['From','To','Mode','Distance','CO₂ (kg)'],
+        ...dataToExport.map(r => [
+          r.from_input ?? r.from_location,
+          r.to_input   ?? r.to_location,
+          r.mode,
+          r.distance_km,
+          r.co2_kg
+        ])
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Report');
+      const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/octet-stream' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `co2-report.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      // PDF/print
+      const win = window.open('', '_blank');
+      win.document.write(`
+        <!doctype html>
+        <html><head>
+          <meta charset="utf-8">
+          <title>CO₂ Report</title>
+          <style>
+            body { font-family: sans-serif; margin: 40px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            th { background: #004080; color: white; }
+          </style>
+        </head><body>
+          <h1>CO₂ Report</h1>
+          <p>${new Date().toLocaleDateString()}</p>
+          <table>
+            <thead>
               <tr>
-                <td>${r.from_input ?? r.from_location}</td>
-                <td>${r.to_input   ?? r.to_location}</td>
-                <td>${r.mode}</td>
-                <td>${r.distance_km}</td>
-                <td>${r.co2_kg}</td>
+                <th>From</th><th>To</th><th>Mode</th><th>Distance</th><th>CO₂ (kg)</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </body></html>
-    `);
-    win.document.close();
-    win.focus();
-    win.print();
-  }
-};
+            </thead>
+            <tbody>
+              ${dataToExport.map(r => `
+                <tr>
+                  <td>${r.from_input ?? r.from_location}</td>
+                  <td>${r.to_input   ?? r.to_location}</td>
+                  <td>${r.mode}</td>
+                  <td>${r.distance_km}</td>
+                  <td>${r.co2_kg}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body></html>
+      `);
+      win.document.close();
+      win.focus();
+      win.print();
+    }
+  };
 
   // Dummy stats for chart
   const statsData = [
@@ -537,211 +552,234 @@ const downloadReport = () => {
               <Button variant="success" onClick={downloadReport} className="mb-2">
                 <FaDownload className="me-1"/> Download Report
               </Button>
-            </div>
-
-{/* Desktop: dynamically render each row’s stops and allow adding/removing stops */}
-<div className="d-none d-md-block">
-  {rows.map((row, ri) => (
-    <Table key={ri} bordered responsive className="align-middle brand-table mb-4">
-      <thead className="table-light">
-        <tr>
-          <th>#</th><th>Location</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {row.stops.map((stop, si) => (
-          <tr key={si}>
-            <td>{si+1}</td>
-            <td>
-              <Form.Control
-                placeholder="City or Code"
-                value={stop.location}
-                onChange={e => handleStopChange(ri, si, 'location', e.target.value)}
-              />
-            </td>
-            <td>
-              <Form.Select
-                value={stop.mode}
-                onChange={e => handleStopChange(ri, si, 'mode', e.target.value)}
-              >
-                <option value="road">Road</option>
-                <option value="air">Air</option>
-                <option value="sea">Sea</option>
-              </Form.Select>
-            </td>
-            <td>
-              <Form.Control
-                type="number"
-                placeholder="0"
-                value={stop.weight}
-                onChange={e => handleStopChange(ri, si, 'weight', e.target.value)}
-              />
-            </td>
-            <td className="text-center">
-              <Form.Check
-                checked={stop.eu}
-                onChange={e => handleStopChange(ri, si, 'eu', e.target.checked)}
-              />
-            </td>
-            <td>
-              <Form.Control
-                placeholder="State"
-                value={stop.state}
-                onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
-              />
-            </td>
-            <td className="text-center">
-              {row.stops.length > 2 && (
-                <Button
-                  variant="outline-danger"
-                  size="sm"
-                  onClick={() => removeStop(ri, si)}
-                ><FaTrash/></Button>
-              )}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-      <tfoot>
-        <tr>
-          <td colSpan={7} className="text-end">
-            <Button size="sm" onClick={() => addStop(ri)}>+ Add Stop</Button>
-          </td>
-        </tr>
-      </tfoot>
-    </Table>
-  ))}
-</div>
-
-{/* Mobile input cards */}
-<div className="d-block d-md-none">
-  {rows.map((row, ri) => (
-    <Card key={ri} className="mb-3 brand-card-mobile">
-      <Card.Body>
-        <h6>Journey {ri + 1}</h6>
-        {row.stops.map((stop, si) => (
-          <div key={si} className="mb-3 p-2 border rounded">
-            <strong>Stop {si + 1}</strong>
-            <Form.Control
-              className="mb-2"
-              placeholder="Location"
-              value={stop.location}
-              onChange={e => handleStopChange(ri, si, 'location', e.target.value)}
-            />
-            <Form.Select
-              className="mb-2"
-              value={stop.mode}
-              onChange={e => handleStopChange(ri, si, 'mode', e.target.value)}
-            >
-              <option value="road">Road</option>
-              <option value="air">Air</option>
-              <option value="sea">Sea</option>
-            </Form.Select>
-            <Form.Control
-              className="mb-2"
-              type="number"
-              placeholder="Weight (kg)"
-              value={stop.weight}
-              onChange={e => handleStopChange(ri, si, 'weight', e.target.value)}
-            />
-            <div className="d-flex align-items-center mb-2">
-              <Form.Check
-                className="me-2"
-                checked={stop.eu}
-                onChange={e => handleStopChange(ri, si, 'eu', e.target.checked)}
-              />
-              <small>In EU</small>
-            </div>
-            <Form.Control
-              className="mb-2"
-              placeholder="State"
-              value={stop.state}
-              onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
-            />
-            {row.stops.length > 2 && (
-              <Button
-                variant="outline-danger"
-                size="sm"
-                onClick={() => removeStop(ri, si)}
-              >
-                Remove Stop
+              <Button variant="outline-primary" className="mb-2 ms-auto" onClick={addRow}>
+                <FaCalculator className="me-1"/> New Journey
               </Button>
-            )}
-          </div>
-        ))}
-        <Button size="sm" onClick={() => addStop(ri)}>+ Add Stop</Button>
-      </Card.Body>
-    </Card>
-  ))}
-</div>
+            </div>
 
-{/* Results Table */}
-{results.length > 0 && (
-  <Card className="shadow-sm mt-4">
-    <Card.Body>
-      <Card.Title className="text-success">Results</Card.Title>
-      <Table striped bordered hover responsive className="mt-3 brand-table">
-        <thead>
-          <tr>
-            <th>From (Used)</th>
-            <th>To (Used)</th>
-            <th>Mode</th>
-            <th>Distance (km)</th>
-            <th>Weight (kg)</th>
-            <th>EU</th>
-            <th>State</th>
-            <th>CO₂ (kg)</th>
-            <th>Error</th>
-          </tr>
-        </thead>
-        <tbody>
-          {results.map((r, i) => (
-            <tr key={i} className={r.error ? 'table-danger' : ''}>
-              <td>
-                {r.from_input}{' '}
-                <small className="text-muted">({r.from_used})</small>
-              </td>
-              <td>
-                {r.to_input}{' '}
-                <small className="text-muted">({r.to_used})</small>
-              </td>
-              <td className="text-capitalize">{r.mode}</td>
-              <td>{r.distance_km}</td>
-              <td>{r.weight_kg}</td>
-              <td>{r.eu ? 'Yes' : 'No'}</td>
-              <td>{r.state?.toUpperCase() ?? ''}</td>
-              <td>{r.co2_kg}</td>
-              <td>
-                {r.error && (
-                  <Badge bg="danger">
-                    <FaExclamationCircle className="me-1" />
-                    {r.error}
-                  </Badge>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </Card.Body>
-  </Card>
-)}
+            {/* Desktop: dynamically render each row’s stops and allow adding/removing stops */}
+            <div className="d-none d-md-block">
+              {rows.map((row, ri) => (
+                <Table key={ri} bordered responsive className="align-middle brand-table mb-4">
+                  <thead className="table-light">
+                    <tr>
+                      <th>#</th><th>Location</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {row.stops.map((stop, si) => (
+                      <tr key={si}>
+                        <td>{si+1}</td>
+                        <td>
+                          <Form.Control
+                            placeholder="City or Code"
+                            value={stop.location}
+                            onChange={e => handleStopChange(ri, si, 'location', e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          <Form.Select
+                            value={stop.mode}
+                            onChange={e => handleStopChange(ri, si, 'mode', e.target.value)}
+                          >
+                            <option value="road">Road</option>
+                            <option value="air">Air</option>
+                            <option value="sea">Sea</option>
+                          </Form.Select>
+                        </td>
+                        <td>
+                          <Form.Control
+                            type="number"
+                            placeholder="0"
+                            value={stop.weight}
+                            onChange={e => handleStopChange(ri, si, 'weight', e.target.value)}
+                          />
+                        </td>
+                        <td className="text-center">
+                          <Form.Check
+                            checked={stop.eu}
+                            onChange={e => handleStopChange(ri, si, 'eu', e.target.checked)}
+                          />
+                        </td>
+                        <td>
+                          <Form.Control
+                            placeholder="State"
+                            value={stop.state}
+                            onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
+                          />
+                        </td>
+                        <td className="text-center">
+                          {row.stops.length > 2 && (
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              onClick={() => removeStop(ri, si)}
+                            ><FaTrash/></Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={7} className="text-end">
+                        <Button size="sm" onClick={() => addStop(ri)}>+ Add Stop</Button>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </Table>
+              ))}
+            </div>
 
-      {/* History drill-down view */}
+            {/* Mobile input cards */}
+            <div className="d-block d-md-none">
+              {rows.map((row, ri) => (
+                <Card key={ri} className="mb-3 brand-card-mobile">
+                  <Card.Body>
+                    <h6>Journey {ri + 1}
+                      {rows.length > 1 && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="text-danger float-end"
+                          onClick={() => removeRow(ri)}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </h6>
+                    {row.stops.map((stop, si) => (
+                      <div key={si} className="mb-3 p-2 border rounded">
+                        <strong>Stop {si + 1}</strong>
+                        <Form.Control
+                          className="mb-2"
+                          placeholder="Location"
+                          value={stop.location}
+                          onChange={e => handleStopChange(ri, si, 'location', e.target.value)}
+                        />
+                        <Form.Select
+                          className="mb-2"
+                          value={stop.mode}
+                          onChange={e => handleStopChange(ri, si, 'mode', e.target.value)}
+                        >
+                          <option value="road">Road</option>
+                          <option value="air">Air</option>
+                          <option value="sea">Sea</option>
+                        </Form.Select>
+                        <Form.Control
+                          className="mb-2"
+                          type="number"
+                          placeholder="Weight (kg)"
+                          value={stop.weight}
+                          onChange={e => handleStopChange(ri, si, 'weight', e.target.value)}
+                        />
+                        <div className="d-flex align-items-center mb-2">
+                          <Form.Check
+                            className="me-2"
+                            checked={stop.eu}
+                            onChange={e => handleStopChange(ri, si, 'eu', e.target.checked)}
+                          />
+                          <small>In EU</small>
+                        </div>
+                        <Form.Control
+                          className="mb-2"
+                          placeholder="State"
+                          value={stop.state}
+                          onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
+                        />
+                        {row.stops.length > 2 && (
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => removeStop(ri, si)}
+                          >
+                            Remove Stop
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button size="sm" onClick={() => addStop(ri)}>+ Add Stop</Button>
+                  </Card.Body>
+                </Card>
+              ))}
+            </div>
+
+            {/* Calculate & Save */}
+            <div className="text-end">
+              <Button variant="success" onClick={handleCalculateAndSave} disabled={loading}>
+                {loading ? <><Spinner size="sm" className="me-1"/>Beregner…</> : 'Beregning & Gem'}
+              </Button>
+            </div>
+          </Card.Body>
+        </Card>
+
+        {/* Results Table */}
+        {results.length > 0 && (
+          <Card className="shadow-sm mt-4">
+            <Card.Body>
+              <Card.Title className="text-success">Results</Card.Title>
+              <Table striped bordered hover responsive className="mt-3 brand-table">
+                <thead>
+                  <tr>
+                    <th>From (Used)</th>
+                    <th>To (Used)</th>
+                    <th>Mode</th>
+                    <th>Distance (km)</th>
+                    <th>Weight (kg)</th>
+                    <th>EU</th>
+                    <th>State</th>
+                    <th>CO₂ (kg)</th>
+                    <th>Error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((r, i) => (
+                    <tr key={i} className={r.error ? 'table-danger' : ''}>
+                      <td>
+                        {r.from_input}{' '}
+                        <small className="text-muted">({r.from_used})</small>
+                      </td>
+                      <td>
+                        {r.to_input}{' '}
+                        <small className="text-muted">({r.to_used})</small>
+                      </td>
+                      <td className="text-capitalize">{r.mode}</td>
+                      <td>{r.distance_km}</td>
+                      <td>{r.weight_kg}</td>
+                      <td>{r.eu ? 'Yes' : 'No'}</td>
+                      <td>{r.state?.toUpperCase() ?? ''}</td>
+                      <td>{r.co2_kg}</td>
+                      <td>
+                        {r.error && (
+                          <Badge bg="danger">
+                            <FaExclamationCircle className="me-1" />
+                            {r.error}
+                          </Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Card.Body>
+          </Card>
+        )}
+      </Container>
+
+      {/* History drill-down */}
       {view === 'history' && (
         <Container className="my-5">
           <Button variant="secondary" onClick={() => setView('calculator')}>
             ← Back to Calculator
           </Button>
 
-          {/* 1) No month selected → list months */}
           {!selectedGroup ? (
             <>
               <h2 className="mt-4">Saved Calculations</h2>
               {Object.entries(historyGroups).map(([year, months]) => (
                 <div key={year} className="mb-3">
                   <h4>{year}</h4>
-                  {Object.entries(months).map(([month, days]) => (
+                  {Object.keys(months).map(month => (
                     <Badge
                       key={month}
                       bg="primary"
@@ -755,36 +793,29 @@ const downloadReport = () => {
                 </div>
               ))}
             </>
-          ) : selectedGroup && !selectedGroup.day ? (
-            /* 2) Month selected but no day → list days */
+          ) : !selectedGroup.day ? (
             <>
-              <Button
-                variant="link"
-                onClick={() => setSelectedGroup(null)}
-              >
+              <Button variant="link" onClick={() => setSelectedGroup(null)}>
                 ← Back to Years
               </Button>
               <h3 className="mt-3">
                 {selectedGroup.month} {selectedGroup.year}
               </h3>
-              {Object.entries(
-                historyGroups[selectedGroup.year]?.[selectedGroup.month] || {}
-              ).map(([day, entries]) => (
-                <Badge
-                  key={day}
-                  bg="secondary"
-                  className="me-2 mb-1"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() =>
-                    setSelectedGroup({ ...selectedGroup, day })
-                  }
-                >
-                  {day} ({entries.length})
-                </Badge>
-              ))}
+              {Object.entries(historyGroups[selectedGroup.year][selectedGroup.month]).map(
+                ([day, entries]) => (
+                  <Badge
+                    key={day}
+                    bg="secondary"
+                    className="me-2 mb-1"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setSelectedGroup({ ...selectedGroup, day })}
+                  >
+                    {day} ({entries.length})
+                  </Badge>
+                )
+              )}
             </>
           ) : (
-            /* 3) Day selected → show full table */
             <>
               <Button
                 variant="link"
@@ -812,8 +843,8 @@ const downloadReport = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {(historyGroups[selectedGroup.year]?.[selectedGroup.month]?.[selectedGroup.day] || [])
-                    .map((r, i) => (
+                  {historyGroups[selectedGroup.year][selectedGroup.month][selectedGroup.day].map(
+                    (r, i) => (
                       <tr key={i} className={r.error ? 'table-danger' : ''}>
                         <td>
                           {r.from_input}{' '}
@@ -838,7 +869,8 @@ const downloadReport = () => {
                           )}
                         </td>
                       </tr>
-                    ))}
+                    )
+                  )}
                 </tbody>
               </Table>
             </>
@@ -943,7 +975,7 @@ const downloadReport = () => {
 
       {/* Toast */}
       <ToastContainer position="bottom-end" className="p-3">
-        <Toast show={toast.show} bg="light" onClose={()=>setToast({show:false,message:''})}>
+        <Toast show={toast.show} bg="light" onClose={() => setToast({show:false,message:''})}>
           <Toast.Header><strong className="me-auto text-success">Notice</strong></Toast.Header>
           <Toast.Body>{toast.message}</Toast.Body>
         </Toast>
