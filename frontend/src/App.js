@@ -858,9 +858,14 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
       />
       <Form.Label className="ms-2 mb-0">
         Jeg bekræfter, at alle data er korrekte og accepterer&nbsp;
-        <Button variant="link" size="sm" onClick={() => setShowTermsModal(true)}>
-          vilkår & betingelser
-        </Button>
+      <Button
+  variant="success"
+  onClick={() => setShowTermsModal(true)}
+  size="lg"
+>
+  Vilkår & betingelser
+</Button>
+
       </Form.Label>
     </div>
   </Form.Group>
@@ -1392,31 +1397,97 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
         </Toast>
       </ToastContainer>
 
-      {/* Vilkår & Betingelser Modal */}
-      <Modal
-        show={showTermsModal}
-        onHide={() => setShowTermsModal(false)}
-        size="lg"
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Vilkår og Betingelser</Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-          <h6>1. Indledning</h6>
-          <p>Disse vilkår gælder for brug af CarbonRoute CO₂-beregneren …</p>
-          <h6>2. Tjenestebeskrivelse</h6>
-          <p>…</p>
-          <h6>3. Accept af EULA</h6>
-          <p>…</p>
-          {/* fortsæt med alle sektioner */}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowTermsModal(false)}>
-            Luk
-          </Button>
-        </Modal.Footer>
-      </Modal>
+{/* Vilkår & Betingelser Modal */}
+<Modal
+  show={showTermsModal}
+  onHide={() => setShowTermsModal(false)}
+  size="lg"
+  centered
+>
+  <Modal.Header closeButton>
+    <Modal.Title>Vilkår og Betingelser</Modal.Title>
+  </Modal.Header>
+  <Modal.Body style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+    <h6>1. Indledning</h6>
+    <p>
+      1.1. Disse vilkår (“Vilkår”) gælder for alle brugere (“Du”/“Bruger”) af CarbonRoute CO₂-beregner og tilhørende tjenester (“Tjenesten”), som stilles til rådighed af CarbonRoute A/S, CVR-nr. [indsæt] (“Vi”/“CarbonRoute”).  
+      <br/>
+      1.2. Ved at benytte Tjenesten accepterer Du disse Vilkår i deres helhed.
+    </p>
+
+    <h6>2. Tjenestebeskrivelse</h6>
+    <p>
+      2.1. CarbonRoute CO₂-beregneren lader dig indtaste eller uploade transportdata (rute, vægt, transportform m.v.) og modtage en beregnet CO₂-rapport i PDF, XLSX eller CSV.  
+      <br/>
+      2.2. Tjenesten inkluderer:
+      <ul>
+        <li>Manual indtastning og bulk-upload (CSV/Excel/JSON)</li>
+        <li>Historik over tidligere beregninger</li>
+        <li>Audit-ready rapporter med indlejret metodik og datapræg (SHA-256)</li>
+        <li>EULA-aksept og metadata om dataintegritet</li>
+      </ul>
+    </p>
+
+    <h6>3. Accept af EULA</h6>
+    <p>
+      3.1. Du skal aktivt acceptere vores slutbrugerlicensaftale (EULA) via tjekboks, før rapporteksport.  
+      <br/>
+      3.2. Din accept logges, og vi gemmer timestamp for dokumentation.
+    </p>
+
+    <h6>4. Brugerens forpligtelser</h6>
+    <p>
+      4.1. Du skal indtaste korrekte data. Vi er ikke ansvarlige for urigtige eller misvisende inputs.  
+      <br/>
+      4.2. Du må ikke omgå sikkerheds- eller autentifikationsmekanismer.
+    </p>
+
+    <h6>5. Ansvarsbegrænsning</h6>
+    <p>
+      5.1. CarbonRoute leverer Tjenesten “som den er” uden garantier, jf. EU-direktiv 2011/83/EU om forbrugerrettigheder.  
+      <br/>
+      5.2. Vi kan ikke drages til ansvar for indirekte tab, følgeskader eller tab som følge af forkerte inputs.  
+      <br/>
+      5.3. Vores samlede ansvar er maksimalt begrænset til det beløb, Du har betalt til CarbonRoute inden for de seneste 12 måneder.
+    </p>
+
+    <h6>6. Databeskyttelse &amp; GDPR</h6>
+    <p>
+      6.1. Vi behandler persondata i overensstemmelse med GDPR (Forordning (EU) 2016/679).  
+      <br/>
+      6.2. Du har ret til indsigt, berigtigelse, sletning og begrænsning af behandling efter artiklerne 15–18 i GDPR.  
+      <br/>
+      6.3. Alle dataoverførsler sker over krypterede forbindelser (HTTPS).
+    </p>
+
+    <h6>7. Intellektuel ejendomsret</h6>
+    <p>
+      7.1. Alle rettigheder til kildekode, design og dokumentation tilhører CarbonRoute A/S.  
+      <br/>
+      7.2. Du får en ikke-eksklusiv, ikke-overdragelig brugsret til Tjenesten, så længe du overholder Vilkårene.
+    </p>
+
+    <h6>8. Ændring af Vilkår</h6>
+    <p>
+      8.1. CarbonRoute kan opdatere disse Vilkår med 30 dages varsel.  
+      <br/>
+      8.2. Opdaterede Vilkår offentliggøres i app’en, og fortsat brug udgør accept.
+    </p>
+
+    <h6>9. Lovvalg og tvister</h6>
+    <p>
+      9.1. Disse Vilkår er underlagt dansk ret og relevant EU-forbrugerlovgivning.  
+      <br/>
+      9.2. Enhver tvist søges løst ved forhandling. Hvis det ikke lykkes, indbringes sagen for Sø- og Handelsretten i København.
+    </p>
+  </Modal.Body>
+  <Modal.Footer>
+    <Button variant="secondary" onClick={() => setShowTermsModal(false)}>
+      Luk
+    </Button>
+  </Modal.Footer>
+</Modal>
+
 
 
 {/* Footer */}
