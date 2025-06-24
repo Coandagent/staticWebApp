@@ -22,7 +22,14 @@ import {
   FaTrash,
   FaExclamationCircle,
   FaChevronLeft,
-  FaChevronRight
+  FaChevronRight,
+  FaMapMarkerAlt,
+  FaWeight,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaFileCsv,
+  FaFileExcel,
+  FaFileCode
 } from 'react-icons/fa';
 import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
@@ -43,7 +50,8 @@ import {
   Toast,
   ToastContainer,
   Badge,
-  Modal
+  Modal,
+  ListGroup
 } from 'react-bootstrap';
 
 import * as XLSX from 'xlsx';
@@ -475,58 +483,112 @@ export default function App() {
           </Button>
         </Modal.Body>
       </Modal>
- {/* Guide / FAQ Modal */}
-      <Modal show={showGuide} onHide={() => setShowGuide(false)} size="lg" centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Kom godt i gang – CO₂ Calculator Guide</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <h5>1) Manuel indtastning af rejser («legs»)</h5>
-          <p>Hver «Journey» kan bestå af én eller flere segmenter (ben). Klik “+ Add Segment” for at tilføje flere ben.</p>
-          <ul>
-            <li><strong>From:</strong> Startsted</li>
-            <li><strong>To:</strong> Slutsted</li>
-            <li><strong>Mode:</strong> road / air / sea</li>
-            <li><strong>Weight (kg):</strong> Varenes vægt</li>
-            <li><strong>EU:</strong> Marker, hvis transporten er inden for EU</li>
-            <li><strong>State:</strong> Landekode (fx DK, DE, US)</li>
-          </ul>
-          <hr/>
 
-          <h5>2) Upload af fil</h5>
-          <p>Vi understøtter tre formater – se eksempler nedenfor.</p>
+{/* Guide / FAQ Modal */}
+<Modal show={showGuide} onHide={() => setShowGuide(false)} size="lg" centered>
+  <Modal.Header closeButton>
+    <Modal.Title>
+      <FaQuestionCircle className="text-success me-2" />
+      Kom godt i gang
+    </Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    {/* 1) Manuel indtastning */}
+    <Row className="mb-4">
+      <Col xs={2} className="text-center">
+        <FaRoute size={36} className="text-primary" />
+      </Col>
+      <Col xs={10}>
+        <h5>1) Manuel indtastning</h5>
+        <p>
+          Opret én eller flere “legs” (segmenter) pr. rejse. Klik{' '}
+          <Badge bg="secondary">+ Add Segment</Badge> for at tilføje.
+        </p>
+        <ListGroup variant="flush">
+          <ListGroup.Item>
+            <FaMapMarkerAlt className="me-2 text-secondary" />
+            <strong>From:</strong> Afsendelsessted
+          </ListGroup.Item>
+          <ListGroup.Item>
+            <FaMapMarkerAlt className="me-2 text-secondary" />
+            <strong>To:</strong> Destination
+          </ListGroup.Item>
+          <ListGroup.Item>
+            <FaTruck className="me-2 text-secondary" />
+            <strong>Mode:</strong>{' '}
+            <code>road</code>, <code>air</code> (<FaPlane />), eller{' '}
+            <code>sea</code> (<FaShip />)
+          </ListGroup.Item>
+          <ListGroup.Item>
+            <FaWeight className="me-2 text-secondary" />
+            <strong>Weight (kg):</strong> Vægt på godset
+          </ListGroup.Item>
+          <ListGroup.Item>
+            <FaCheckCircle className="me-2 text-secondary" />
+            <strong>EU:</strong> Marker hvis inden for EU
+          </ListGroup.Item>
+          <ListGroup.Item>
+            <FaTimesCircle className="me-2 text-secondary" />
+            <strong>State (valgfri):</strong> Kun for USA eller andre regioner med delstats-/provinskoder
+          </ListGroup.Item>
+        </ListGroup>
+      </Col>
+    </Row>
+    <hr/>
 
-          <h6>• CSV</h6>
-          <pre>
-from_location,to_location,mode,weight_kg,eu,state{'\n'}
-Copenhagen,Berlin,road,100,yes,DE{'\n'}
+    {/* 2) Upload fil */}
+    <Row className="mb-4">
+      <Col xs={2} className="text-center">
+        <FaFileCsv size={36} className="text-success" />
+      </Col>
+      <Col xs={10}>
+        <h5>2) Upload fil</h5>
+        <p>Understøttede formater: CSV, Excel eller JSON. Eksempler:</p>
+
+        <h6><FaFileCsv className="me-2" />CSV</h6>
+        <pre className="bg-light p-2 rounded">
+from_location,to_location,mode,weight_kg,eu,state{"\n"}
+Copenhagen,Berlin,road,100,yes,DE{"\n"}
 Paris,London,air,50,no,GB
-          </pre>
+        </pre>
 
-          <h6>• Excel (XLSX/XLS)</h6>
-          <p>Første række er kolonne-overskrifter:</p>
-          <pre>
-from_location | to_location | mode | weight_kg | eu | state{'\n'}
-Copenhagen     | Berlin      | road | 100       | yes| DE{'\n'}
-Paris          | London      | air  | 50        | no | GB
-          </pre>
+        <h6><FaFileExcel className="me-2" />Excel (XLSX/XLS)</h6>
+        <pre className="bg-light p-2 rounded">
+from_location | to_location | mode  | weight_kg | eu  | state{"\n"}
+Copenhagen     | Berlin      | road  | 100       | yes | DE{"\n"}
+Paris          | London      | air   | 50        | no  | GB
+        </pre>
 
-          <h6>• JSON</h6>
-          <pre>
-[  {'{'}"from_location":"Copenhagen","to_location":"Berlin","mode":"road","weight_kg":100,"eu":true,"state":"DE"{'}'},  {'{'}"from_location":"Paris","to_location":"London","mode":"air","weight_kg":50,"eu":false,"state":"GB"{'}'} ]
-          </pre>
+        <h6><FaFileCode className="me-2" />JSON</h6>
+        <pre className="bg-light p-2 rounded">
+[{"{"}"from_location":"Copenhagen","to_location":"Berlin","mode":"road","weight_kg":100,"eu":true,"state":"DE"{"}"},
+ {"{"}"from_location":"Paris","to_location":"London","mode":"air","weight_kg":50,"eu":false,"state":"GB"{"}"}]
+        </pre>
 
-          <p>Filen må indeholde flere segmenter pr. rejse. Hvert segment bliver et ben i din CO₂-beregning.</p>
+        <p>Hver række/objekt bliver til ét segment—du kan have flere segmenter i én fil.</p>
+      </Col>
+    </Row>
+    <hr/>
 
-          <hr/>
-          <h5>3) Download & Rapport</h5>
-          <p>Vælg PDF, XLSX eller CSV i dropdown og klik “Download Report” for at gemme dine resultater.</p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowGuide(false)}>Luk</Button>
-        </Modal.Footer>
+    {/* 3) Download & rapport */}
+    <Row>
+      <Col xs={2} className="text-center">
+        <FaCheckCircle size={36} className="text-success" />
+      </Col>
+      <Col xs={10}>
+        <h5>3) Download & rapport</h5>
+        <p>
+          Vælg format (PDF, XLSX eller CSV) i dropdown, og klik på{' '}
+          <Badge bg="success"><FaDownload /></Badge> “Download Report” for at gemme dine resultater.
+        </p>
+      </Col>
+    </Row>
+  </Modal.Body>
+  <Modal.Footer>
+    <Button variant="secondary" onClick={() => setShowGuide(false)}>Luk</Button>
+  </Modal.Footer>
+</Modal>
 
-      </Modal>
       {/* Navbar */}
       <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
         <Container fluid>
