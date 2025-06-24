@@ -403,7 +403,7 @@ const calculateOnly = async (rawRows) => {
   };
 
 
-// Download / Print report - updated for legal compliance
+// Download / Print report - with Methodology & Emission Factors in Excel and PDF
 const downloadReport = async () => {
   // 0) EULA guard
   if (!eulaAccepted) {
@@ -435,13 +435,13 @@ const downloadReport = async () => {
   const meta = {
     generatedDate: new Date().toISOString(),
     standard: 'GHG Protocol Transport Scope 3 Cat.4 & 9 (ISO 14083:2024)',
-    appVersion: '1.2.3',                       // bump as appropriate
+    appVersion: '1.2.3',
     user: user?.userDetails || 'Anonymous',
     dataHash
   };
 
   if (['csv', 'xlsx'].includes(format)) {
-    // ─── CSV / XLSX export ───────────────────────────────────────────────────────
+    // ─── EXCEL export ────────────────────────────────────────────────────────────
     const wb = XLSX.utils.book_new();
 
     // 3a) Results sheet
@@ -461,14 +461,25 @@ const downloadReport = async () => {
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(wb, ws, 'Results');
 
-    // 3b) Metadata sheet (hidden by default in Excel)
+    // 3b) Metadata sheet (hidden)
     const metaEntries = Object.entries(meta).map(([k, v]) => [k, v]);
     const wsMeta = XLSX.utils.aoa_to_sheet([['Key','Value'], ...metaEntries]);
-    // hide sheet when opened:
     wsMeta['!sheetHidden'] = true;
     XLSX.utils.book_append_sheet(wb, wsMeta, 'Metadata');
 
-    // 3c) Write & trigger download
+    // 3c) Methodology sheet
+    const methodologyLines = [
+      ['Methodology & Emission Factors'],
+      [],
+      ['• EF Transport Road, CSRD v2.0, p.45'],
+      ['• EF Air & Sea, ESRS Guidelines 2024'],
+      ['• Factor DB version: transport-factors-v1.4.2'],
+      ['• Raw tables: https://example.com/factors']
+    ];
+    const wsMeth = XLSX.utils.aoa_to_sheet(methodologyLines);
+    XLSX.utils.book_append_sheet(wb, wsMeth, 'Methodology');
+
+    // 3d) Write & download
     const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const a = document.createElement('a');
@@ -515,17 +526,16 @@ const downloadReport = async () => {
     doc.text('Methodology & Emission Factors', 40, 60);
     doc.setFontSize(10);
     const methodologyLines = [
-      'Emission factors sourced from:',
-      '- EF Transport Road, CSRD v2.0, p.45',
-      '- EF Air & Sea, ESRS Guidelines 2024',
-      'Factor DB version: transport-factors-v1.4.2',
-      'Raw tables: https://example.com/factors'
+      '• EF Transport Road, CSRD v2.0, p.45',
+      '• EF Air & Sea, ESRS Guidelines 2024',
+      '• Factor DB version: transport-factors-v1.4.2',
+      '• Raw tables: https://example.com/factors'
     ];
     methodologyLines.forEach((line, i) =>
       doc.text(line, 40, 80 + i * 15)
     );
 
-    // 6) Disclaimer footer on appendix page
+    // 6) Disclaimer footer
     const disclaimer =
       'Denne rapport er udarbejdet i overensstemmelse med GHG Protocol & ISO 14083:2024. ' +
       'CarbonRoute påtager sig intet ansvar for forkerte input eller afvigelser i beregningsgrundlag.';
@@ -535,25 +545,11 @@ const downloadReport = async () => {
     });
 
     // 7) Stub: digital signature / timestamp
-    // TODO: send doc.output('arraybuffer') to your signing endpoint (e.g. node-signpdf)
-    // and replace this save() with the signed blob download.
+    // TODO: send doc.output('arraybuffer') to your signing endpoint
     doc.save('co2-report.pdf');
   }
 };
 
-
-    // Footer disclaimer
-    const disclaimer =
-      'Denne rapport er udarbejdet i overensstemmelse med GHG Protocol og ISO 14083:2024. ' +
-      'CarbonRoute er ikke ansvarlig for forkert indtastede data eller eventuelle afvigelser i beregningsgrundlag.';
-    doc.setFontSize(8);
-    doc.text(disclaimer, 40, doc.internal.pageSize.height - 40, {
-      maxWidth: doc.internal.pageSize.width - 80
-    });
-
-    doc.save('co2-report.pdf');
-  }
-};
 
 
   // DELETE helper: stops propagation, confirms, calls DELETE, updates state
