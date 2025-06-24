@@ -857,7 +857,7 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
         onChange={e => setEulaAccepted(e.target.checked)}
       />
       <Form.Label className="ms-2 mb-0">
-        Jeg bekræfter, at alle data er korrekte og accepterer&nbsp;
+        Jeg bekræfter, at alle data er korrekte og accepterer vilkår og betingelser;
       </Form.Label>
     </div>
   </Form.Group>
