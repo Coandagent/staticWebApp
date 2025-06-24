@@ -514,26 +514,26 @@ const calculateOnly = async (rawRows) => {
         <h5>1) Manuel indtastning</h5>
         <p>
           Opret én eller flere “legs” (segmenter) pr. rejse. Klik{' '}
-          <Badge bg="secondary">+ Add Segment</Badge> for at tilføje.
+          <Badge bg="secondary">+ Tilføj segment</Badge> for at tilføje.
         </p>
         <ListGroup variant="flush">
           <ListGroup.Item>
             <FaMapMarkerAlt className="me-2 text-secondary" />
-            <strong>From:</strong> Afsendelsessted
+            <strong>Fra:</strong> Afsendelsessted
           </ListGroup.Item>
           <ListGroup.Item>
             <FaMapMarkerAlt className="me-2 text-secondary" />
-            <strong>To:</strong> Destination
+            <strong>Til:</strong> Destination
           </ListGroup.Item>
           <ListGroup.Item>
             <FaTruck className="me-2 text-secondary" />
-            <strong>Mode:</strong>{' '}
-            <code>road</code>, <code>air</code> (<FaPlane />), eller{' '}
-            <code>sea</code> (<FaShip />)
+            <strong>Transporttype:</strong>{' '}
+            <code>vej</code>, <code>luft</code> (<FaPlane />), eller{' '}
+            <code>sø</code> (<FaShip />)
           </ListGroup.Item>
           <ListGroup.Item>
             <FaWeight className="me-2 text-secondary" />
-            <strong>Weight (kg):</strong> Vægt på godset
+            <strong>Vægt (kg):</strong> Vægt på godset
           </ListGroup.Item>
           <ListGroup.Item>
             <FaCheckCircle className="me-2 text-secondary" />
@@ -541,7 +541,7 @@ const calculateOnly = async (rawRows) => {
           </ListGroup.Item>
           <ListGroup.Item>
             <FaTimesCircle className="me-2 text-secondary" />
-            <strong>State (valgfri):</strong> Kun for USA eller andre regioner med delstats-/provinskoder
+            <strong>Region (valgfri):</strong> Kun for USA eller andre regioner med delstats-/provinskoder
           </ListGroup.Item>
         </ListGroup>
       </Col>
@@ -591,7 +591,7 @@ Paris          | London      | air   | 50        | no  | GB
         <h5>3) Download & rapport</h5>
         <p>
           Vælg format (PDF, XLSX eller CSV) i dropdown, og klik på{' '}
-          <Badge bg="success"><FaDownload /></Badge> “Download Report” for at gemme dine resultater.
+          <Badge bg="success"><FaDownload /></Badge> “Download rapport” for at gemme dine resultater.
         </p>
       </Col>
     </Row>
@@ -600,6 +600,7 @@ Paris          | London      | air   | 50        | no  | GB
     <Button variant="secondary" onClick={() => setShowGuide(false)}>Luk</Button>
   </Modal.Footer>
 </Modal>
+
 
       {/* Navbar */}
       <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
