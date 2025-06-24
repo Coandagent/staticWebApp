@@ -15,7 +15,7 @@ module.exports = async function(context, req) {
   );
   const userId = principal.userId;
 
-  // 2) Initialize Table client
+  // 2) Initialize Table client for quota tracking
   const account  = process.env.STORAGE_ACCOUNT_NAME;
   const key      = process.env.STORAGE_ACCOUNT_KEY;
   const cred     = new AzureNamedKeyCredential(account, key);
@@ -27,21 +27,20 @@ module.exports = async function(context, req) {
   try {
     user = await tbl.getEntity("users", userId);
   } catch {
-    // not found → create as free tier, zero count
     user = { partitionKey: "users", rowKey: userId, Plan: "free", CountThisMonth: 0 };
     await tbl.createEntity(user);
   }
 
-  // 4) Enforce free-tier limit (5 calcs/month, no upload)
+  // 4) Enforce free-tier limit (5 calcs/month)
   if (user.Plan === "free" && user.CountThisMonth >= 5) {
     context.res = {
       status: 403,
-      body: "Free tier limit reached (5 calculations per day). Upgrade to paid to continue."
+      body: "Free tier limit reached (5 calculations per month). Upgrade to paid to continue."
     };
     return;
   }
 
-  // 5) Your existing CO₂‐calculation logic
+  // 5) CO₂‐calculation logic
   const CO2_FACTORS = { road: 120, air: 255, sea: 25 };
   if (!context.bindings.initialized) {
     loadData();
@@ -55,12 +54,17 @@ module.exports = async function(context, req) {
   }
 
   const results = routes.map(r => {
+    // ensure defaults
+    const weight  = Number(r.weight_kg || 0);
+    const euFlag  = Boolean(r.eu);
+    const state   = r.state || "";
+
     try {
-      const opts     = { eu: r.eu, state: r.state };
+      const opts     = { eu: euFlag, state };
       const fromInfo = lookupLocation(r.from_location, r.mode, opts);
       const toInfo   = lookupLocation(r.to_location,   r.mode, opts);
       const distKm   = haversine(fromInfo, toInfo);
-      const co2Kg    = distKm * (r.weight_kg / 1000) * (CO2_FACTORS[r.mode] || 0);
+      const co2Kg    = distKm * (weight / 1000) * (CO2_FACTORS[r.mode] || 0);
 
       return {
         from_input:  r.from_location,
@@ -68,23 +72,27 @@ module.exports = async function(context, req) {
         to_input:    r.to_location,
         to_used:     toInfo.usedName,
         mode:        r.mode,
-        weight_kg:   r.weight_kg,
+        weight_kg:   weight,
+        eu:          euFlag,
+        state:       state,
         distance_km: distKm.toFixed(2),
         co2_kg:      co2Kg.toFixed(3),
         user_id:     userId
       };
     } catch (e) {
       return {
-        from_input: r.from_location,
-        to_input:   r.to_location,
-        mode:       r.mode,
-        weight_kg:  r.weight_kg,
-        error:      e.message
+        from_input:  r.from_location,
+        to_input:    r.to_location,
+        mode:        r.mode,
+        weight_kg:   weight,
+        eu:          euFlag,
+        state:       state,
+        error:       e.message
       };
     }
   });
 
-  // 6) Increment the user’s counter if on free tier
+  // 6) Increment free-tier counter
   if (user.Plan === "free") {
     user.CountThisMonth++;
     await tbl.updateEntity(
@@ -93,6 +101,6 @@ module.exports = async function(context, req) {
     );
   }
 
-  // 7) Return results
+  // 7) Return enriched results
   context.res = { status: 200, body: results };
 };
