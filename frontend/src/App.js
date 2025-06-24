@@ -33,7 +33,7 @@ import './App.css'; // <-- Custom branding styles
 import logo from './assets/logo.svg'; // <-- Your green-themed logo
 
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 import {
   Container,
@@ -422,7 +422,7 @@ const downloadReport = async () => {
     return;
   }
 
-  // 2) Compute SHA-256 hash of the JSON payload
+  // 2) Compute SHA-256 hash
   const payloadString = JSON.stringify(dataToExport);
   const hashBuffer = await crypto.subtle.digest(
     'SHA-256',
@@ -431,7 +431,7 @@ const downloadReport = async () => {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const dataHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-  // 3) Build common metadata
+  // 3) Common metadata
   const meta = {
     generatedDate: new Date().toISOString(),
     standard: 'GHG Protocol Transport Scope 3 Cat.4 & 9 (ISO 14083:2024)',
@@ -441,10 +441,10 @@ const downloadReport = async () => {
   };
 
   if (['csv', 'xlsx'].includes(format)) {
-    // ─── EXCEL export ────────────────────────────────────────────────────────────
+    // ─── EXCEL ────────────────────────────────────────────────────────────
     const wb = XLSX.utils.book_new();
 
-    // 3a) Results sheet
+    // Results
     const wsData = [
       ['From','To','Mode','Distance (km)','Weight (kg)','EU','State','CO₂ (kg)'],
       ...dataToExport.map(r => [
@@ -454,20 +454,20 @@ const downloadReport = async () => {
         r.distance_km,
         r.weight_kg,
         r.eu ? 'Yes' : 'No',
-        r.state?.toUpperCase() ?? '',
+        r.state?.toUpperCase() || '',
         r.co2_kg
       ])
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(wb, ws, 'Results');
 
-    // 3b) Metadata sheet (hidden)
+    // Metadata (hidden)
     const metaEntries = Object.entries(meta).map(([k, v]) => [k, v]);
     const wsMeta = XLSX.utils.aoa_to_sheet([['Key','Value'], ...metaEntries]);
     wsMeta['!sheetHidden'] = true;
     XLSX.utils.book_append_sheet(wb, wsMeta, 'Metadata');
 
-    // 3c) Methodology sheet
+    // Methodology
     const methodologyLines = [
       ['Methodology & Emission Factors'],
       [],
@@ -479,7 +479,7 @@ const downloadReport = async () => {
     const wsMeth = XLSX.utils.aoa_to_sheet(methodologyLines);
     XLSX.utils.book_append_sheet(wb, wsMeth, 'Methodology');
 
-    // 3d) Write & download
+    // Write & download
     const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const a = document.createElement('a');
@@ -490,7 +490,7 @@ const downloadReport = async () => {
     document.body.removeChild(a);
 
   } else {
-    // ─── PDF export ───────────────────────────────────────────────────────────────
+    // ─── PDF ────────────────────────────────────────────────────────────────
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     doc.setFontSize(14);
     doc.text('CO₂-rapport', 40, 60);
@@ -501,7 +501,7 @@ const downloadReport = async () => {
     doc.text(`User: ${meta.user}`, 40, 110);
     doc.text(`Data SHA-256: ${meta.dataHash}`, 40, 125);
 
-    // 4) Data table
+    // Data table
     const head = [['From','To','Mode','Distance','Weight','EU','State','CO₂ (kg)']];
     const body = dataToExport.map(r => [
       r.from_input ?? r.from_location,
@@ -510,7 +510,7 @@ const downloadReport = async () => {
       r.distance_km,
       r.weight_kg,
       r.eu ? 'Yes' : 'No',
-      r.state?.toUpperCase() ?? '',
+      r.state?.toUpperCase() || '',
       r.co2_kg
     ]);
     autoTable(doc, {
@@ -520,22 +520,21 @@ const downloadReport = async () => {
       styles: { fontSize: 9, cellPadding: 4 }
     });
 
-    // 5) Methodology appendix
+    // Methodology appendix
     doc.addPage();
     doc.setFontSize(12);
     doc.text('Methodology & Emission Factors', 40, 60);
     doc.setFontSize(10);
-    const methodologyLines = [
+    [
       '• EF Transport Road, CSRD v2.0, p.45',
       '• EF Air & Sea, ESRS Guidelines 2024',
       '• Factor DB version: transport-factors-v1.4.2',
       '• Raw tables: https://example.com/factors'
-    ];
-    methodologyLines.forEach((line, i) =>
+    ].forEach((line, i) =>
       doc.text(line, 40, 80 + i * 15)
     );
 
-    // 6) Disclaimer footer
+    // Disclaimer footer
     const disclaimer =
       'Denne rapport er udarbejdet i overensstemmelse med GHG Protocol & ISO 14083:2024. ' +
       'CarbonRoute påtager sig intet ansvar for forkerte input eller afvigelser i beregningsgrundlag.';
@@ -544,12 +543,11 @@ const downloadReport = async () => {
       maxWidth: doc.internal.pageSize.width - 80
     });
 
-    // 7) Stub: digital signature / timestamp
+    // Digital-sign stub
     // TODO: send doc.output('arraybuffer') to your signing endpoint
     doc.save('co2-report.pdf');
   }
 };
-
 
 
   // DELETE helper: stops propagation, confirms, calls DELETE, updates state
