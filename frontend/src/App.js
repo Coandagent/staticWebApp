@@ -1090,18 +1090,13 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
 </Container>
 
       {/* Carousel */}
-{/* Carousel */}
+
+{/* Sådan virker det */}
 <Container className="my-5">
   <h2 className="fw-bold text-center mb-4">Sådan virker det</h2>
-  <Carousel
-    controls
-    indicators={false}
-    interval={null}
-    prevIcon={<FaChevronLeft size={32} className="text-success" />}
-    nextIcon={<FaChevronRight size={32} className="text-success" />}
-    className="pb-4"
-  >
-    {[
+  {/* 1) Define your steps as a variable */}
+  {(() => {
+    const items = [
       {
         icon: <FaUserPlus size={48} className="text-success"/>,
         title: 'Opret konto',
@@ -1132,29 +1127,42 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
         title: 'Del rapport',
         desc: 'Del med kunder eller kolleger'
       }
-    ]
-      .reduce((rows, item, i) => {
-        if (i % 2 === 0) rows.push([item, items[i+1]]);
-        return rows;
-      }, [])
-      .map((pair, idx) => (
-        <Carousel.Item key={idx}>
-          <Row className="justify-content-center g-4">
-            {pair.map((step, j) => step && (
-              <Col xs={12} md={6} key={j}>
-                <Card className="text-center border-0 shadow-sm p-4">
-                  {step.icon}
-                  <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title>
-                  <Card.Text>{step.desc}</Card.Text>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </Carousel.Item>
-      ))}
-  </Carousel>
-</Container>
+    ];
 
+    // 2) Chunk into pairs and render
+    const chunks = items.reduce((rows, item, i, arr) => {
+      if (i % 2 === 0) rows.push([ item, arr[i + 1] ]);
+      return rows;
+    }, []);
+
+    return (
+      <Carousel
+        controls
+        indicators={false}
+        interval={null}
+        prevIcon={<FaChevronLeft size={32} className="text-success" />}
+        nextIcon={<FaChevronRight size={32} className="text-success" />}
+        className="pb-4"
+      >
+        {chunks.map((pair, idx) => (
+          <Carousel.Item key={idx}>
+            <Row className="justify-content-center g-4">
+              {pair.map((step, j) => step && (
+                <Col xs={12} md={6} key={j}>
+                  <Card className="text-center border-0 shadow-sm p-4">
+                    {step.icon}
+                    <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title>
+                    <Card.Text>{step.desc}</Card.Text>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          </Carousel.Item>
+        ))}
+      </Carousel>
+    );
+  })()}
+</Container>
 
 {/* Emissions-trend */}
 <section className="py-5 bg-white">
