@@ -858,14 +858,6 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
       />
       <Form.Label className="ms-2 mb-0">
         Jeg bekræfter, at alle data er korrekte og accepterer&nbsp;
- <Button
-    variant="success"
-    className="me-2 mb-2"
-    onClick={() => setShowTermsModal(true)}
-  >
-    Vilkår & Betingelser
-  </Button>
-
       </Form.Label>
     </div>
   </Form.Group>
