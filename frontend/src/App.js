@@ -299,35 +299,47 @@ export default function App() {
     }
   };
 
-  // Calculate only (file upload)
-  const calculateOnly = async rawRows => {
-    const payload = rawRows.flatMap(row =>
-      row.segments.map(seg => ({
-        from_location: seg.from,
-        to_location: seg.to,
-        mode: seg.mode,
-        weight_kg: Number(seg.weight) || 0,
-        eu: Boolean(seg.eu),
-        state: (seg.state || '').trim().toLowerCase()
-      }))
-    );
-    setLoading(true);
-    try {
-      const res = await fetch('/api/calculate-co2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setResults(await res.json());
-    } catch (e) {
-      showToast(e.message);
-    } finally {
-      setLoading(false);
-      setFileLoading(false);
-    }
-  };
+// Replace your existing calculateOnly with this:
+const calculateOnly = async (rawRows) => {
+  const payload = rawRows.flatMap(row =>
+    row.segments.map(seg => ({
+      from_location: seg.from,
+      to_location: seg.to,
+      mode: seg.mode,
+      weight_kg: Number(seg.weight) || 0,
+      eu: Boolean(seg.eu),
+      state: (seg.state || '').trim().toLowerCase()
+    }))
+  );
 
+  setLoading(true);
+  try {
+    // 1) calculate
+    const calcRes = await fetch('/api/calculate-co2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!calcRes.ok) throw new Error(await calcRes.text());
+    const calcResults = await calcRes.json();
+    setResults(calcResults);
+
+    // 2) save
+    const saveRes = await fetch('/api/SaveCo2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ results: calcResults })
+    });
+    if (!saveRes.ok) throw new Error(await saveRes.text());
+
+    showToast('Beregnet og gemt!');
+  } catch (e) {
+    showToast(e.message);
+  } finally {
+    setLoading(false);
+    setFileLoading(false);
+  }
+};
   // File upload handler
   const handleFileUpload = e => {
     const file = e.target.files[0];
