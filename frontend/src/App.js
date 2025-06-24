@@ -17,6 +17,7 @@ import {
   FaPlane,
   FaUpload,
   FaDownload,
+FaCalculator,
   FaTrash,
   FaExclamationCircle,
   FaChevronLeft,
