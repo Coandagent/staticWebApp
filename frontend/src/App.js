@@ -16,7 +16,6 @@ import {
   FaShip,
   FaPlane,
   FaUpload,
-  FaCalculator,
   FaDownload,
   FaTrash,
   FaExclamationCircle,
@@ -123,13 +122,7 @@ export default function App() {
 
   // UI state
   const [rows, setRows] = useState([
-    {
-      stops: [
-        { location: '', mode: 'road', weight: '', eu: true, state: '', error: '' },
-        { location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }
-      ],
-      error: ''
-    }
+    { stops: [{ location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }], error: '' }
   ]);
   const [results, setResults] = useState([]);
   const [format, setFormat] = useState('pdf');
@@ -139,8 +132,8 @@ export default function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   // History view state
-  const [view, setView] = useState('calculator');         // "calculator" or "history"
-  const [historyGroups, setHistoryGroups] = useState({}); // { [year]: { [month]: { [day]: [entries] } } }
+  const [view, setView] = useState('calculator'); // "calculator" or "history"
+  const [historyGroups, setHistoryGroups] = useState({});
   const [selectedGroup, setSelectedGroup] = useState(null);
 
   // Toast helper
@@ -178,13 +171,7 @@ export default function App() {
   };
 
   const addRow = () => {
-    setRows([...rows, {
-      stops: [
-        { location: '', mode: 'road', weight: '', eu: true, state: '', error: '' },
-        { location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }
-      ],
-      error: ''
-    }]);
+    setRows([...rows, { stops: [{ location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }], error: '' }]);
   };
 
   const removeRow = idx => {
@@ -221,8 +208,6 @@ export default function App() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-
-      // Group by year/month/day
       const groups = {};
       data.forEach(entry => {
         const ts = entry.timestamp || entry.rowKey || new Date().toISOString();
@@ -235,7 +220,6 @@ export default function App() {
         groups[yr][mo][day] = groups[yr][mo][day] || [];
         groups[yr][mo][day].push(entry);
       });
-
       setHistoryGroups(groups);
       setSelectedGroup(null);
       setView('history');
@@ -246,11 +230,9 @@ export default function App() {
     }
   };
 
-  // Calculate & save
+  // Calculate & Save
   const handleCalculateAndSave = async () => {
     if (!validate()) return;
-
-    // Flatten stops → legs
     const payload = rows.flatMap(row =>
       row.stops.slice(0, -1).map((from, i) => {
         const to = row.stops[i + 1];
@@ -264,10 +246,8 @@ export default function App() {
         };
       })
     );
-
     setLoading(true);
     try {
-      // 1) Calculate
       const calcRes = await fetch('/api/calculate-co2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -277,7 +257,6 @@ export default function App() {
       const calcResults = await calcRes.json();
       setResults(calcResults);
 
-      // 2) Save
       await fetch('/api/SaveCo2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -308,7 +287,6 @@ export default function App() {
         };
       })
     );
-
     setLoading(true);
     try {
       const res = await fetch('/api/calculate-co2', {
@@ -399,7 +377,6 @@ export default function App() {
     }
 
     if (['csv','xlsx'].includes(format)) {
-      // build sheet
       const wsData = [
         ['From','To','Mode','Distance','CO₂ (kg)'],
         ...dataToExport.map(r => [
@@ -422,44 +399,17 @@ export default function App() {
       a.click();
       document.body.removeChild(a);
     } else {
-      // PDF/print
       const win = window.open('', '_blank');
       win.document.write(`
-        <!doctype html>
-        <html><head>
-          <meta charset="utf-8">
-          <title>CO₂ Report</title>
-          <style>
-            body { font-family: sans-serif; margin: 40px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-            th { background: #004080; color: white; }
-          </style>
-        </head><body>
-          <h1>CO₂ Report</h1>
-          <p>${new Date().toLocaleDateString()}</p>
-          <table>
-            <thead>
-              <tr>
-                <th>From</th><th>To</th><th>Mode</th><th>Distance</th><th>CO₂ (kg)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${dataToExport.map(r => `
-                <tr>
-                  <td>${r.from_input ?? r.from_location}</td>
-                  <td>${r.to_input   ?? r.to_location}</td>
-                  <td>${r.mode}</td>
-                  <td>${r.distance_km}</td>
-                  <td>${r.co2_kg}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </body></html>
-      `);
+        <!doctype html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
+        <style>body{font-family:sans-serif;margin:40px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#004080;color:white}</style>
+        </head><body><h1>CO₂ Report</h1><p>${new Date().toLocaleDateString()}</p>
+        <table><thead><tr><th>From</th><th>To</th><th>Mode</th><th>Distance</th><th>CO₂ (kg)</th></tr></thead><tbody>
+        ${dataToExport.map(r => `
+          <tr><td>${r.from_input ?? r.from_location}</td><td>${r.to_input ?? r.to_location}</td><td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td></tr>
+        `).join('')}
+        </tbody></table></body></html>`);
       win.document.close();
-      win.focus();
       win.print();
     }
   };
@@ -528,13 +478,7 @@ export default function App() {
 
             {/* Upload & Controls */}
             <div className="mb-3 d-flex flex-wrap align-items-center">
-              <Form.Control
-                type="file"
-                accept=".csv,.json,.xlsx,.xls"
-                onChange={handleFileUpload}
-                id="file-upload"
-                style={{ display:'none' }}
-              />
+              <Form.Control type="file" accept=".csv,.json,.xlsx,.xls" onChange={handleFileUpload} id="file-upload" style={{ display:'none' }} />
               <Button as="label" htmlFor="file-upload" variant="outline-success" className="me-2 mb-2">
                 {fileLoading ? <Spinner animation="border" size="sm"/> : <FaUpload className="me-1"/>}
                 Upload File
@@ -557,77 +501,82 @@ export default function App() {
               </Button>
             </div>
 
-            {/* Desktop: dynamically render each row’s stops and allow adding/removing stops */}
+            {/* Desktop Journeys */}
             <div className="d-none d-md-block">
               {rows.map((row, ri) => (
-                <Table key={ri} bordered responsive className="align-middle brand-table mb-4">
-                  <thead className="table-light">
-                    <tr>
-                      <th>#</th><th>Location</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {row.stops.map((stop, si) => (
-                      <tr key={si}>
-                        <td>{si+1}</td>
-                        <td>
-                          <Form.Control
-                            placeholder="City or Code"
-                            value={stop.location}
-                            onChange={e => handleStopChange(ri, si, 'location', e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <Form.Select
-                            value={stop.mode}
-                            onChange={e => handleStopChange(ri, si, 'mode', e.target.value)}
-                          >
-                            <option value="road">Road</option>
-                            <option value="air">Air</option>
-                            <option value="sea">Sea</option>
-                          </Form.Select>
-                        </td>
-                        <td>
-                          <Form.Control
-                            type="number"
-                            placeholder="0"
-                            value={stop.weight}
-                            onChange={e => handleStopChange(ri, si, 'weight', e.target.value)}
-                          />
-                        </td>
-                        <td className="text-center">
-                          <Form.Check
-                            checked={stop.eu}
-                            onChange={e => handleStopChange(ri, si, 'eu', e.target.checked)}
-                          />
-                        </td>
-                        <td>
-                          <Form.Control
-                            placeholder="State"
-                            value={stop.state}
-                            onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
-                          />
-                        </td>
-                        <td className="text-center">
-                          {row.stops.length > 2 && (
-                            <Button
-                              variant="outline-danger"
-                              size="sm"
-                              onClick={() => removeStop(ri, si)}
-                            ><FaTrash/></Button>
-                          )}
+                <div key={ri} className="mb-4">
+                  <div className="d-flex justify-content-end mb-2">
+                    {rows.length > 1 && (
+                      <Button variant="outline-danger" size="sm" onClick={() => removeRow(ri)}>
+                        Remove Journey
+                      </Button>
+                    )}
+                  </div>
+                  <Table bordered responsive className="align-middle brand-table">
+                    <thead className="table-light">
+                      <tr>
+                        <th>#</th><th>Location</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {row.stops.map((stop, si) => (
+                        <tr key={si}>
+                          <td>{si+1}</td>
+                          <td>
+                            <Form.Control
+                              placeholder="City or Code"
+                              value={stop.location}
+                              onChange={e => handleStopChange(ri, si, 'location', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <Form.Select
+                              value={stop.mode}
+                              onChange={e => handleStopChange(ri, si, 'mode', e.target.value)}
+                            >
+                              <option value="road">Road</option>
+                              <option value="air">Air</option>
+                              <option value="sea">Sea</option>
+                            </Form.Select>
+                          </td>
+                          <td>
+                            <Form.Control
+                              type="number"
+                              placeholder="0"
+                              value={stop.weight}
+                              onChange={e => handleStopChange(ri, si, 'weight', e.target.value)}
+                            />
+                          </td>
+                          <td className="text-center">
+                            <Form.Check
+                              checked={stop.eu}
+                              onChange={e => handleStopChange(ri, si, 'eu', e.target.checked)}
+                            />
+                          </td>
+                          <td>
+                            <Form.Control
+                              placeholder="State"
+                              value={stop.state}
+                              onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
+                            />
+                          </td>
+                          <td className="text-center">
+                            {row.stops.length > 1 && (
+                              <Button variant="outline-danger" size="sm" onClick={() => removeStop(ri, si)}><FaTrash/></Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={7} className="text-end">
+                          <Button size="sm" onClick={() => addStop(ri)}>+ Add Stop</Button>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={7} className="text-end">
-                        <Button size="sm" onClick={() => addStop(ri)}>+ Add Stop</Button>
-                      </td>
-                    </tr>
-                  </tfoot>
-                </Table>
+                    </tfoot>
+                  </Table>
+                </div>
               ))}
             </div>
 
@@ -638,14 +587,8 @@ export default function App() {
                   <Card.Body>
                     <h6>Journey {ri + 1}
                       {rows.length > 1 && (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="text-danger float-end"
-                          onClick={() => removeRow(ri)}
-                        >
-                          Remove
-                        </Button>
+                        <Button variant="link" size="sm" className="text-danger float-end" onClick={() => removeRow(ri)}>Remove
+Journey</Button>
                       )}
                     </h6>
                     {row.stops.map((stop, si) => (
@@ -687,12 +630,8 @@ export default function App() {
                           value={stop.state}
                           onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
                         />
-                        {row.stops.length > 2 && (
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => removeStop(ri, si)}
-                          >
+                        {row.stops.length > 1 && (
+                          <Button variant="outline-danger" size="sm" onClick={() => removeStop(ri, si)}>
                             Remove Stop
                           </Button>
                         )}
@@ -735,14 +674,8 @@ export default function App() {
                 <tbody>
                   {results.map((r, i) => (
                     <tr key={i} className={r.error ? 'table-danger' : ''}>
-                      <td>
-                        {r.from_input}{' '}
-                        <small className="text-muted">({r.from_used})</small>
-                      </td>
-                      <td>
-                        {r.to_input}{' '}
-                        <small className="text-muted">({r.to_used})</small>
-                      </td>
+                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
+                      <td>{r.to_input} <small className="text-muted">({r.to_used})</small></td>
                       <td className="text-capitalize">{r.mode}</td>
                       <td>{r.distance_km}</td>
                       <td>{r.weight_kg}</td>
