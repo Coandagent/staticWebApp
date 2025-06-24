@@ -24,32 +24,52 @@ module.exports = async function (context, req) {
     new AzureNamedKeyCredential(account, key)
   );
 
-  // 3) list all rows for this user
-  const entities = [];
-  for await (const e of client.listEntities({
-    queryOptions: { filter: `PartitionKey eq '${userId}'` }
-  })) {
-    entities.push({
-      timestamp:    e.rowKey,           // row timestamp
-      from_input:   e.from_input,
-      from_used:    e.from_used,
-      to_input:     e.to_input,
-      to_used:      e.to_used,
-      mode:         e.mode,
-      distance_km:  e.distance_km,
-      co2_kg:       e.co2_kg,
-
-      // newly persisted fields:
-      weight_kg:    e.weight_kg,
-      eu:           e.eu,
-      state:        e.state,
-      error:        e.error
-    });
+  // 3) if DELETE, remove the specified row
+  if (req.method === "DELETE") {
+    const { id } = req.body || {};
+    if (!id) {
+      context.res = { status: 400, body: "Missing id" };
+      return;
+    }
+    try {
+      // PartitionKey is the userId, RowKey is the id
+      await client.deleteEntity(userId, id);
+      context.res = { status: 200, body: "Deleted" };
+    } catch (err) {
+      context.log.error(err);
+      context.res = { status: 500, body: "Failed to delete" };
+    }
+    return;
   }
 
-  // 4) sort by timestamp ascending
-  entities.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  // 4) otherwise it’s a GET — list all rows for this user
+  if (req.method === "GET" || req.method === "POST") {
+    // (your existing listing logic…)
+    const entities = [];
+    for await (const e of client.listEntities({
+      queryOptions: { filter: `PartitionKey eq '${userId}'` }
+    })) {
+      entities.push({
+        id:            e.rowKey,
+        timestamp:     e.rowKey,
+        from_input:    e.from_input,
+        from_used:     e.from_used,
+        to_input:      e.to_input,
+        to_used:       e.to_used,
+        mode:          e.mode,
+        distance_km:   e.distance_km,
+        co2_kg:        e.co2_kg,
+        weight_kg:     e.weight_kg,
+        eu:            e.eu,
+        state:         e.state,
+        error:         e.error
+      });
+    }
+    entities.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    context.res = { status: 200, body: entities };
+    return;
+  }
 
-  // 5) return
-  context.res = { status: 200, body: entities };
+  // 5) method not allowed
+  context.res = { status: 405, body: "Method Not Allowed" };
 };

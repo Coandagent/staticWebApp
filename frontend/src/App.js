@@ -213,25 +213,34 @@ export default function App() {
   const handleViewHistory = async () => {
     setLoading(true);
     try {
+      // Fetch all entries for this user
       const res = await fetch('/api/GetCo2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([])
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
       });
       if (!res.ok) throw new Error(await res.text());
+
       const data = await res.json();
       const groups = {};
+
       data.forEach(entry => {
+        // 1) assign a unique id (rowKey/timestamp) for delete
+        entry.id = entry.timestamp || entry.rowKey;
+
+        // 2) parse the timestamp into year/month/day buckets
         const ts = entry.timestamp || entry.rowKey || new Date().toISOString();
         const d = new Date(ts);
         const yr = d.getFullYear();
         const mo = d.toLocaleString('default', { month: 'long' });
         const day = d.getDate();
-        groups[yr] = groups[yr] || {};
-        groups[yr][mo] = groups[yr][mo] || {};
-        groups[yr][mo][day] = groups[yr][mo][day] || [];
+
+        // 3) accumulate into groups[year][month][day]
+        if (!groups[yr]) groups[yr] = {};
+        if (!groups[yr][mo]) groups[yr][mo] = {};
+        if (!groups[yr][mo][day]) groups[yr][mo][day] = [];
         groups[yr][mo][day].push(entry);
       });
+
       setHistoryGroups(groups);
       setSelectedGroup(null);
       setView('history');
@@ -372,7 +381,7 @@ export default function App() {
   // Download / Print report
   const downloadReport = () => {
     const dataToExport =
-      view === 'history' && selectedGroup
+      view === 'history' && selectedGroup && selectedGroup.day
         ? historyGroups[selectedGroup.year][selectedGroup.month][selectedGroup.day]
         : results;
 
@@ -413,9 +422,43 @@ export default function App() {
         ${dataToExport.map(r =>
           `<tr><td>${r.from_input ?? r.from_location}</td><td>${r.to_input ?? r.to_location}</td><td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td></tr>`
         ).join('')}
-        </tbody></table></body></html>`);
+        </tbody></table></body></html>`
+      );
       win.document.close();
       win.print();
+    }
+  };
+
+  // DELETE helper: stops propagation, confirms, calls DELETE, updates state
+  const handleDeleteEntry = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm('Er du sikker på, at du vil slette denne beregning?')) return;
+
+    try {
+      const res = await fetch('/api/GetCo2', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      setHistoryGroups(prev => {
+        const { year, month, day } = selectedGroup;
+        const filtered = prev[year][month][day].filter(r => r.id !== id);
+        return {
+          ...prev,
+          [year]: {
+            ...prev[year],
+            [month]: {
+              ...prev[year][month],
+              [day]: filtered
+            }
+          }
+        };
+      });
+      showToast('Slettet!');
+    } catch (err) {
+      showToast(`Kunne ikke slette: ${err.message}`);
     }
   };
 
@@ -783,6 +826,7 @@ export default function App() {
               <Table striped bordered hover responsive className="mt-2 brand-table">
                 <thead>
                   <tr>
+                    <th></th> {/* delete-column header */}
                     <th>From (Used)</th>
                     <th>To (Used)</th>
                     <th>Mode</th>
@@ -797,7 +841,16 @@ export default function App() {
                 <tbody>
                   {historyGroups[selectedGroup.year][selectedGroup.month][selectedGroup.day].map(
                     (r, i) => (
-                      <tr key={i} className={r.error ? 'table-danger' : ''}>
+                      <tr key={r.id} className={r.error ? 'table-danger' : ''}>
+                        <td className="text-center">
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={e => handleDeleteEntry(e, r.id)}
+                          >
+                            <FaTrash />
+                          </Button>
+                        </td>
                         <td>
                           {r.from_input}{' '}
                           <small className="text-muted">({r.from_used})</small>
