@@ -397,56 +397,100 @@ const calculateOnly = async (rawRows) => {
     else reader.readAsText(file);
   };
 
-  // Download / Print report
-  const downloadReport = () => {
-    const dataToExport =
-      view === 'history' && selectedGroup && selectedGroup.day
-        ? historyGroups[selectedGroup.year][selectedGroup.month][selectedGroup.day]
-        : results;
 
-    if (!dataToExport || dataToExport.length === 0) {
-      showToast('Ingen resultater at downloade');
-      return;
-    }
+// Download / Print report - updated for legal compliance
+const downloadReport = () => {
+  const dataToExport =
+    view === 'history' && selectedGroup && selectedGroup.day
+      ? historyGroups[selectedGroup.year][selectedGroup.month][selectedGroup.day]
+      : results;
 
-    if (['csv','xlsx'].includes(format)) {
-      const wsData = [
-        ['From','To','Mode','Distance','CO₂ (kg)'],
-        ...dataToExport.map(r => [
-          r.from_input ?? r.from_location,
-          r.to_input   ?? r.to_location,
-          r.mode,
-          r.distance_km,
-          r.co2_kg
-        ])
-      ];
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Report');
-      const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/octet-stream' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `co2-report.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } else {
-      const win = window.open('', '_blank');
-      win.document.write(
-        `<!doctype html><html><head><meta charset="utf-8"><title>CO₂-rapport</title>
-        <style>body{font-family:sans-serif;margin:40px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#004080;color:white}</style>
-        </head><body><h1>CO₂ Report</h1><p>${new Date().toLocaleDateString()}</p>
-        <table><thead><tr><th>From</th><th>To</th><th>Mode</th><th>Distance</th><th>CO₂ (kg)</th></tr></thead><tbody>
-        ${dataToExport.map(r =>
-          `<tr><td>${r.from_input ?? r.from_location}</td><td>${r.to_input ?? r.to_location}</td><td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td></tr>`
-        ).join('')}
-        </tbody></table></body></html>`
-      );
-      win.document.close();
-      win.print();
-    }
+  if (!dataToExport || dataToExport.length === 0) {
+    showToast('Ingen resultater at downloade');
+    return;
+  }
+
+  // 1) Common compliance metadata
+  const meta = {
+    generatedDate: new Date().toISOString(),
+    standard: 'GHG Protocol Transport Scope 3 Categories 4 & 9 (ISO 14083:2024)',
+    appVersion: '1.2.3',                  // bump to your actual version
+    user: user?.userDetails || 'Anonymous'
   };
+
+  if (['csv','xlsx'].includes(format)) {
+    // ─── CSV / XLSX export with Metadata sheet ─────────────────────────────────
+    const wb = XLSX.utils.book_new();
+
+    // Results sheet
+    const wsData = [
+      ['From','To','Mode','Distance (km)','Weight (kg)','EU','State','CO₂ (kg)'],
+      ...dataToExport.map(r => [
+        r.from_input ?? r.from_location,
+        r.to_input   ?? r.to_location,
+        r.mode,
+        r.distance_km,
+        r.weight_kg,
+        r.eu ? 'Yes' : 'No',
+        r.state?.toUpperCase() ?? '',
+        r.co2_kg
+      ])
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Results');
+
+    // Metadata sheet
+    const metaData = Object.entries(meta).map(([k, v]) => [k, v]);
+    const wsMeta = XLSX.utils.aoa_to_sheet([['Key','Value'], ...metaData]);
+    XLSX.utils.book_append_sheet(wb, wsMeta, 'Metadata');
+
+    // Write & download
+    const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `co2-report.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+  } else {
+    // ─── PDF export with header + disclaimer ────────────────────────────────────
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    doc.setFontSize(14);
+    doc.text('CO₂-rapport', 40, 60);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date(meta.generatedDate).toLocaleString()}`, 40, 80);
+    doc.text(`Standard: ${meta.standard}`, 40, 95);
+    doc.text(`User: ${meta.user}`, 40, 110);
+
+    // AutoTable
+    const head = [['From','To','Mode','Distance','Weight','EU','State','CO₂ (kg)']];
+    const body = dataToExport.map(r => [
+      r.from_input ?? r.from_location,
+      r.to_input   ?? r.to_location,
+      r.mode,
+      r.distance_km,
+      r.weight_kg,
+      r.eu ? 'Yes' : 'No',
+      r.state?.toUpperCase() ?? '',
+      r.co2_kg
+    ]);
+    doc.autoTable({ startY: 130, head, body });
+
+    // Footer disclaimer
+    const disclaimer =
+      'Denne rapport er udarbejdet i overensstemmelse med GHG Protocol og ISO 14083:2024. ' +
+      'CarbonRoute er ikke ansvarlig for forkert indtastede data eller eventuelle afvigelser i beregningsgrundlag.';
+    doc.setFontSize(8);
+    doc.text(disclaimer, 40, doc.internal.pageSize.height - 40, {
+      maxWidth: doc.internal.pageSize.width - 80
+    });
+
+    doc.save('co2-report.pdf');
+  }
+};
+
 
   // DELETE helper: stops propagation, confirms, calls DELETE, updates state
   const handleDeleteEntry = async (e, id) => {
