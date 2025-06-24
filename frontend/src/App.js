@@ -655,7 +655,6 @@ Paris          | London      | air   | 50        | no  | GB
                   size="lg"
                   onClick={() => setShowGuide(true)}
                 >
-                  <FaQuestionCircle className="me-1" />
                   Guide
                 </Button>
               </>
