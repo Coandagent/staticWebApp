@@ -123,7 +123,7 @@ export default function App() {
 
   // UI state
   const [rows, setRows] = useState([
-    { stops: [{ location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }], error: '' }
+    { segments: [{ from: '', to: '', mode: 'road', weight: '', eu: true, state: '', error: '' }], error: '' }
   ]);
   const [results, setResults] = useState([]);
   const [format, setFormat] = useState('pdf');
@@ -161,28 +161,28 @@ export default function App() {
       .catch(() => setUser(null));
   }, []);
 
-  // Row & Stop handlers
-  const handleStopChange = (rowIdx, stopIdx, field, value) => {
+  // Segment handlers
+  const handleSegmentChange = (rowIdx, segIdx, field, value) => {
     const allRows = [...rows];
-    allRows[rowIdx].stops[stopIdx][field] = value;
-    allRows[rowIdx].stops[stopIdx].error = '';
+    allRows[rowIdx].segments[segIdx][field] = value;
+    allRows[rowIdx].segments[segIdx].error = '';
     setRows(allRows);
   };
 
-  const addStop = rowIdx => {
+  const addSegment = rowIdx => {
     const allRows = [...rows];
-    allRows[rowIdx].stops.push({ location: '', mode: 'road', weight: '', eu: true, state: '', error: '' });
+    allRows[rowIdx].segments.push({ from: '', to: '', mode: 'road', weight: '', eu: true, state: '', error: '' });
     setRows(allRows);
   };
 
-  const removeStop = (rowIdx, stopIdx) => {
+  const removeSegment = (rowIdx, segIdx) => {
     const allRows = [...rows];
-    allRows[rowIdx].stops.splice(stopIdx, 1);
+    allRows[rowIdx].segments.splice(segIdx, 1);
     setRows(allRows);
   };
 
   const addRow = () => {
-    setRows([...rows, { stops: [{ location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }], error: '' }]);
+    setRows([...rows, { segments: [{ from: '', to: '', mode: 'road', weight: '', eu: true, state: '', error: '' }], error: '' }]);
   };
 
   const removeRow = idx => {
@@ -194,9 +194,10 @@ export default function App() {
     let ok = true;
     const updated = rows.map(row => {
       const errs = [];
-      row.stops.forEach(stop => {
-        if (!stop.location) errs.push('Location required');
-        if (!stop.weight) errs.push('Weight required');
+      row.segments.forEach(seg => {
+        if (!seg.from) errs.push('From required');
+        if (!seg.to) errs.push('To required');
+        if (!seg.weight) errs.push('Weight required');
       });
       return { ...row, error: errs.join(', ') };
     });
@@ -245,17 +246,14 @@ export default function App() {
   const handleCalculateAndSave = async () => {
     if (!validate()) return;
     const payload = rows.flatMap(row =>
-      row.stops.slice(0, -1).map((from, i) => {
-        const to = row.stops[i + 1];
-        return {
-          from_location: from.location,
-          to_location:   to.location,
-          mode:          to.mode,
-          weight_kg:     Number(to.weight) || 0,
-          eu:            Boolean(to.eu),
-          state:         (to.state || '').trim().toLowerCase()
-        };
-      })
+      row.segments.map(seg => ({
+        from_location: seg.from,
+        to_location: seg.to,
+        mode: seg.mode,
+        weight_kg: Number(seg.weight) || 0,
+        eu: Boolean(seg.eu),
+        state: (seg.state || '').trim().toLowerCase()
+      }))
     );
     setLoading(true);
     try {
@@ -286,17 +284,14 @@ export default function App() {
   // Calculate only (file upload)
   const calculateOnly = async rawRows => {
     const payload = rawRows.flatMap(row =>
-      row.stops.slice(0, -1).map((from, i) => {
-        const to = row.stops[i + 1];
-        return {
-          from_location: from.location,
-          to_location:   to.location,
-          mode:          to.mode,
-          weight_kg:     Number(to.weight) || 0,
-          eu:            Boolean(to.eu),
-          state:         (to.state || '').trim().toLowerCase()
-        };
-      })
+      row.segments.map(seg => ({
+        from_location: seg.from,
+        to_location: seg.to,
+        mode: seg.mode,
+        weight_kg: Number(seg.weight) || 0,
+        eu: Boolean(seg.eu),
+        state: (seg.state || '').trim().toLowerCase()
+      }))
     );
     setLoading(true);
     try {
@@ -358,16 +353,15 @@ export default function App() {
         return;
       }
 
-      const payload = parsed.map(r => ({
-        from_location: r.from_location || r.from || r.origin,
-        to_location:   r.to_location   || r.to   || r.destination,
-        mode:          r.mode         || r.transport,
-        weight_kg:     Number(r.weight_kg || r.weight) || 0,
-        eu:            String(r.eu).toLowerCase() === 'yes' || r.eu === true,
-        state:         (r.state || r.state_code || '').toLowerCase()
+      const payloadRows = parsed.map(r => ({
+        from: r.from_location || r.from || r.origin,
+        to:   r.to_location   || r.to   || r.destination,
+        mode: r.mode || r.transport,
+        weight: Number(r.weight_kg || r.weight) || 0,
+        eu:    String(r.eu).toLowerCase() === 'yes' || r.eu === true,
+        state: (r.state || r.state_code || '').toLowerCase()
       }));
-
-      calculateOnly([{ stops: payload }]);
+      calculateOnly([{ segments: payloadRows }]);
       e.target.value = '';
     };
 
@@ -411,14 +405,14 @@ export default function App() {
       document.body.removeChild(a);
     } else {
       const win = window.open('', '_blank');
-      win.document.write(`
-        <!doctype html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
+      win.document.write(
+        `<!doctype html><html><head><meta charset="utf-8"><title>CO₂ Report</title>
         <style>body{font-family:sans-serif;margin:40px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ccc;padding:8px;text-align:left}th{background:#004080;color:white}</style>
         </head><body><h1>CO₂ Report</h1><p>${new Date().toLocaleDateString()}</p>
         <table><thead><tr><th>From</th><th>To</th><th>Mode</th><th>Distance</th><th>CO₂ (kg)</th></tr></thead><tbody>
-        ${dataToExport.map(r => `
-          <tr><td>${r.from_input ?? r.from_location}</td><td>${r.to_input ?? r.to_location}</td><td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td></tr>
-        `).join('')}
+        ${dataToExport.map(r =>
+          `<tr><td>${r.from_input ?? r.from_location}</td><td>${r.to_input ?? r.to_location}</td><td>${r.mode}</td><td>${r.distance_km}</td><td>${r.co2_kg}</td></tr>`
+        ).join('')}
         </tbody></table></body></html>`);
       win.document.close();
       win.print();
@@ -432,7 +426,9 @@ export default function App() {
         <Modal.Header closeButton><Modal.Title>Log ind for at prøve gratis</Modal.Title></Modal.Header>
         <Modal.Body>
           <p>Log ind med din Microsoft-konto for at prøve vores CO₂-calculator gratis.</p>
-          <Button variant="primary" onClick={() => window.location.href = '/.auth/login/aad?post_login_redirect=/'}>Log ind med Microsoft</Button>
+          <Button variant="primary" onClick={() => window.location.href = '/.auth/login/aad?post_login_redirect=/'}>
+            Log ind med Microsoft
+          </Button>
         </Modal.Body>
       </Modal>
 
@@ -447,10 +443,14 @@ export default function App() {
             {user ? (
               <>
                 <span className="me-3">Hello, {user.userDetails}</span>
-                <Button variant="outline-light" size="sm" onClick={() => window.location.href='/.auth/logout'}>Logout</Button>
+                <Button variant="outline-light" size="sm" onClick={() => window.location.href='/.auth/logout'}>
+                  Logout
+                </Button>
               </>
             ) : (
-              <Button variant="outline-light" size="sm" onClick={() => setShowLoginModal(true)}>Login</Button>
+              <Button variant="outline-light" size="sm" onClick={() => setShowLoginModal(true)}>
+                Login
+              </Button>
             )}
           </Nav>
         </Container>
@@ -466,7 +466,9 @@ export default function App() {
               {loading ? <><Spinner size="sm" className="me-1"/>Henter…</> : 'Vis beregninger'}
             </Button>
           ) : (
-            <Button variant="light" size="lg" className="me-2" onClick={() => setShowLoginModal(true)}>Prøv Gratis</Button>
+            <Button variant="light" size="lg" className="me-2" onClick={() => setShowLoginModal(true)}>
+              Prøv Gratis
+            </Button>
           )}
         </Container>
       </header>
@@ -516,24 +518,31 @@ export default function App() {
                   <Table bordered responsive className="align-middle brand-table">
                     <thead className="table-light">
                       <tr>
-                        <th>#</th><th>Location</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
+                        <th>#</th><th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {row.stops.map((stop, si) => (
+                      {row.segments.map((seg, si) => (
                         <tr key={si}>
                           <td>{si+1}</td>
                           <td>
                             <Form.Control
-                              placeholder="City or Code"
-                              value={stop.location}
-                              onChange={e => handleStopChange(ri, si, 'location', e.target.value)}
+                              placeholder="From"
+                              value={seg.from}
+                              onChange={e => handleSegmentChange(ri, si, 'from', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <Form.Control
+                              placeholder="To"
+                              value={seg.to}
+                              onChange={e => handleSegmentChange(ri, si, 'to', e.target.value)}
                             />
                           </td>
                           <td>
                             <Form.Select
-                              value={stop.mode}
-                              onChange={e => handleStopChange(ri, si, 'mode', e.target.value)}
+                              value={seg.mode}
+                              onChange={e => handleSegmentChange(ri, si, 'mode', e.target.value)}
                             >
                               <option value="road">Road</option>
                               <option value="air">Air</option>
@@ -544,26 +553,28 @@ export default function App() {
                             <Form.Control
                               type="number"
                               placeholder="0"
-                              value={stop.weight}
-                              onChange={e => handleStopChange(ri, si, 'weight', e.target.value)}
+                              value={seg.weight}
+                              onChange={e => handleSegmentChange(ri, si, 'weight', e.target.value)}
                             />
                           </td>
                           <td className="text-center">
                             <Form.Check
-                              checked={stop.eu}
-                              onChange={e => handleStopChange(ri, si, 'eu', e.target.checked)}
+                              checked={seg.eu}
+                              onChange={e => handleSegmentChange(ri, si, 'eu', e.target.checked)}
                             />
                           </td>
                           <td>
                             <Form.Control
                               placeholder="State"
-                              value={stop.state}
-                              onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
+                              value={seg.state}
+                              onChange={e => handleSegmentChange(ri, si, 'state', e.target.value)}
                             />
                           </td>
                           <td className="text-center">
-                            {row.stops.length > 1 && (
-                              <Button variant="outline-danger" size="sm" onClick={() => removeStop(ri, si)}><FaTrash/></Button>
+                            {row.segments.length > 1 && (
+                              <Button variant="outline-danger" size="sm" onClick={() => removeSegment(ri, si)}>
+                                <FaTrash/>
+                              </Button>
                             )}
                           </td>
                         </tr>
@@ -571,8 +582,8 @@ export default function App() {
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan={7} className="text-end">
-                          <Button size="sm" onClick={() => addStop(ri)}>+ Add Stop</Button>
+                        <td colSpan={8} className="text-end">
+                          <Button size="sm" onClick={() => addSegment(ri)}>+ Add Segment</Button>
                         </td>
                       </tr>
                     </tfoot>
@@ -588,22 +599,30 @@ export default function App() {
                   <Card.Body>
                     <h6>Journey {ri + 1}
                       {rows.length > 1 && (
-                        <Button variant="link" size="sm" className="text-danger float-end" onClick={() => removeRow(ri)}>Remove Journey</Button>
+                        <Button variant="link" size="sm" className="text-danger float-end" onClick={() => removeRow(ri)}>
+                          Remove Journey
+                        </Button>
                       )}
                     </h6>
-                    {row.stops.map((stop, si) => (
+                    {row.segments.map((seg, si) => (
                       <div key={si} className="mb-3 p-2 border rounded">
-                        <strong>Stop {si + 1}</strong>
+                        <strong>Segment {si + 1}</strong>
                         <Form.Control
                           className="mb-2"
-                          placeholder="Location"
-                          value={stop.location}
-                          onChange={e => handleStopChange(ri, si, 'location', e.target.value)}
+                          placeholder="From"
+                          value={seg.from}
+                          onChange={e => handleSegmentChange(ri, si, 'from', e.target.value)}
+                        />
+                        <Form.Control
+                          className="mb-2"
+                          placeholder="To"
+                          value={seg.to}
+                          onChange={e => handleSegmentChange(ri, si, 'to', e.target.value)}
                         />
                         <Form.Select
                           className="mb-2"
-                          value={stop.mode}
-                          onChange={e => handleStopChange(ri, si, 'mode', e.target.value)}
+                          value={seg.mode}
+                          onChange={e => handleSegmentChange(ri, si, 'mode', e.target.value)}
                         >
                           <option value="road">Road</option>
                           <option value="air">Air</option>
@@ -613,31 +632,31 @@ export default function App() {
                           className="mb-2"
                           type="number"
                           placeholder="Weight (kg)"
-                          value={stop.weight}
-                          onChange={e => handleStopChange(ri, si, 'weight', e.target.value)}
+                          value={seg.weight}
+                          onChange={e => handleSegmentChange(ri, si, 'weight', e.target.value)}
                         />
                         <div className="d-flex align-items-center mb-2">
                           <Form.Check
                             className="me-2"
-                            checked={stop.eu}
-                            onChange={e => handleStopChange(ri, si, 'eu', e.target.checked)}
+                            checked={seg.eu}
+                            onChange={e => handleSegmentChange(ri, si, 'eu', e.target.checked)}
                           />
                           <small>In EU</small>
                         </div>
                         <Form.Control
                           className="mb-2"
                           placeholder="State"
-                          value={stop.state}
-                          onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
+                          value={seg.state}
+                          onChange={e => handleSegmentChange(ri, si, 'state', e.target.value)}
                         />
-                        {row.stops.length > 1 && (
-                          <Button variant="outline-danger" size="sm" onClick={() => removeStop(ri, si)}>
-                            Remove Stop
+                        {row.segments.length > 1 && (
+                          <Button variant="outline-danger" size="sm" onClick={() => removeSegment(ri, si)}>
+                            Remove Segment
                           </Button>
                         )}
                       </div>
                     ))}
-                    <Button size="sm" onClick={() => addStop(ri)}>+ Add Stop</Button>
+                    <Button size="sm" onClick={() => addSegment(ri)}>+ Add Segment</Button>
                   </Card.Body>
                 </Card>
               ))}
@@ -815,18 +834,18 @@ export default function App() {
       <Container className="my-5" id="features">
         <Row className="text-center mb-4">
           <h2 className="fw-bold">Kernefunktioner</h2>
-          <p className="text-muted">Alt du behøver til CO₂-rapportering</p> 
-        </Row> 
-        <Row> 
+          <p className="text-muted">Alt du behøver til CO₂-rapportering</p>
+        </Row>
+        <Row>
           <Col md={4} className="mb-4">
-            <Card className="h-100 shadow-sm border-0"> 
-              <Card.Body> 
-                <Card.Title className="fw-bold text-primary">Bruger-venlig Input</Card.Title> 
-                <Card.Text className="text-muted"> 
-                  Indtast start- og slutdestination med autocomplete, vægt og transporttype – vi guider dig! 
-                </Card.Text> 
-              </Card.Body> 
-            </Card> 
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Bruger-venlig Input</Card.Title>
+                <Card.Text className="text-muted">
+                  Indtast start- og slutdestination med autocomplete, vægt og transporttype – vi guider dig!
+                </Card.Text>
+              </Card.Body>
+            </Card>
           </Col>
           <Col md={4} className="mb-4">
             <Card className="h-100 shadow-sm border-0">
@@ -837,87 +856,87 @@ export default function App() {
                 </Card.Text>
               </Card.Body>
             </Card>
-          </Col> 
-          <Col md={4} className="mb-4"> 
-            <Card className="h-100 shadow-sm border-0"> 
-              <Card.Body> 
-                <Card.Title className="fw-bold text-primary">Rapporter & Eksport</Card.Title> 
-                <Card.Text className="text-muted"> 
-                  Download rapporter i PDF/Excel eller del data med dit team direkte fra platformen. 
-                </Card.Text> 
-              </Card.Body> 
-            </Card> 
-          </Col> 
-        </Row> 
-      </Container> 
+          </Col>
+          <Col md={4} className="mb-4">
+            <Card className="h-100 shadow-sm border-0">
+              <Card.Body>
+                <Card.Title className="fw-bold text-primary">Rapporter & Eksport</Card.Title>
+                <Card.Text className="text-muted">
+                  Download rapporter i PDF/Excel eller del data med dit team direkte fra platformen.
+                </Card.Text>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      </Container>
 
-      {/* Carousel */} 
-      <Container className="my-5"> 
-        <h2 className="fw-bold text-center mb-4">Din rejse som leverandør</h2> 
-        <Carousel 
-          controls 
-          indicators={false} 
-          interval={null} 
-          prevIcon={<FaChevronLeft size={32} className="text-success" />} 
-          nextIcon={<FaChevronRight size={32} className="text-success" />} 
-          className="pb-4" 
-        > 
-          {[ 
-            { icon:<FaUserPlus size={48} className="text-success"/>, title:'Opret konto', desc:'Gratis konto på 30 sekunder – kom i gang uden binding.' }, 
-            { icon:<FaRoute size={48} className="text-success"/>, title:'Indtast data', desc:'Vælg transporttype, indtast rute & vægt – vi guider dig.' }, 
-            { icon:<FaChartLine size={48} className="text-success"/>, title:'Se resultater', desc:'Interaktive grafer & tal for CO₂-udledning.' }, 
-            { icon:<FaHandshake size={48} className="text-success"/>, title:'Del med kunder', desc:'Share PDF/Excel med eget logo – styrk tilliden.' }, 
-            { icon:<FaTruck size={48} className="text-success"/>, title:'Optimer ruter', desc:'Identificér CO₂-tunge ruter & reducer omkostninger.' }, 
-            { icon:<FaShip size={48} className="text-success"/>, title:'Multimodal', desc:'Overblik over vej, skib & luft i ét dashboard.' }, 
-            { icon:<FaPlane size={48} className="text-success"/>, title:'Skaler til Pro', desc:'White-label rapporter, API-adgang & support.' } 
-          ] 
-            .reduce((slides, step, i, arr) => { if (i % 2 === 0) slides.push(arr.slice(i, i+2)); return slides; }, []) 
-            .map((pair, idx) => ( 
-              <Carousel.Item key={idx}> 
-                <Row className="justify-content-center g-4"> 
-                  {pair.map((step, j) => ( 
-                    <Col xs={12} md={6} key={j}> 
-                      <Card className="text-center border-0 shadow-sm p-4"> 
-                        {step.icon} 
-                        <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title> 
-                        <Card.Text className="text-muted">{step.desc}</Card.Text> 
-                      </Card> 
-                    </Col> 
-                  ))} 
-                </Row> 
-              </Carousel.Item> 
-            ))} 
-        </Carousel> 
-      </Container> 
+      {/* Carousel */}
+      <Container className="my-5">
+        <h2 className="fw-bold text-center mb-4">Din rejse som leverandør</h2>
+        <Carousel
+          controls
+          indicators={false}
+          interval={null}
+          prevIcon={<FaChevronLeft size={32} className="text-success" />}
+          nextIcon={<FaChevronRight size={32} className="text-success" />}
+          className="pb-4"
+        >
+          {[
+            { icon:<FaUserPlus size={48} className="text-success"/>, title:'Opret konto', desc:'Gratis konto på 30 sekunder – kom i gang uden binding.' },
+            { icon:<FaRoute size={48} className="text-success"/>, title:'Indtast data', desc:'Vælg transporttype, indtast rute & vægt – vi guider dig.' },
+            { icon:<FaChartLine size={48} className="text-success"/>, title:'Se resultater', desc:'Interaktive grafer & tal for CO₂-udledning.' },
+            { icon:<FaHandshake size={48} className="text-success"/>, title:'Del med kunder', desc:'Share PDF/Excel med eget logo – styrk tilliden.' },
+            { icon:<FaTruck size={48} className="text-success"/>, title:'Optimer ruter', desc:'Identificér CO₂-tunge ruter & reducer omkostninger.' },
+            { icon:<FaShip size={48} className="text-success"/>, title:'Multimodal', desc:'Overblik over vej, skib & luft i ét dashboard.' },
+            { icon:<FaPlane size={48} className="text-success"/>, title:'Skaler til Pro', desc:'White-label rapporter, API-adgang & support.' }
+          ]
+            .reduce((slides, step, i, arr) => { if (i % 2 === 0) slides.push(arr.slice(i, i+2)); return slides; }, [])
+            .map((pair, idx) => (
+              <Carousel.Item key={idx}>
+                <Row className="justify-content-center g-4">
+                  {pair.map((step, j) => (
+                    <Col xs={12} md={6} key={j}>
+                      <Card className="text-center border-0 shadow-sm p-4">
+                        {step.icon}
+                        <Card.Title className="mt-2 fw-bold">{step.title}</Card.Title>
+                        <Card.Text className="text-muted">{step.desc}</Card.Text>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </Carousel.Item>
+            ))}
+        </Carousel>
+      </Container>
 
-      {/* Statistics */} 
-      <section className="py-5 bg-white"> 
-        <Container> 
-          <h2 className="text-center mb-4">Månedlige Udsendelser</h2> 
-          <ResponsiveContainer width="100%" height={300}> 
-            <LineChart data={statsData} margin={{ top:5, right:20, bottom:5, left:0 }}> 
-              <CartesianGrid strokeDasharray="3 3" /> 
-              <XAxis dataKey="name" /> 
-              <YAxis label={{ value:'kg CO₂', angle:-90, position:'insideLeft' }}/> 
-              <Tooltip /> 
-              <Line type="monotone" dataKey="emissions" stroke="#2a8f64" strokeWidth={3} dot={{ r:5 }}/> 
-            </LineChart> 
-          </ResponsiveContainer> 
-        </Container> 
-      </section> 
+      {/* Statistics */}
+      <section className="py-5 bg-white">
+        <Container>
+          <h2 className="text-center mb-4">Månedlige Udsendelser</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={statsData} margin={{ top:5, right:20, bottom:5, left:0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis label={{ value:'kg CO₂', angle:-90, position:'insideLeft' }}/>
+              <Tooltip />
+              <Line type="monotone" dataKey="emissions" stroke="#2a8f64" strokeWidth={3} dot={{ r:5 }}/>
+            </LineChart>
+          </ResponsiveContainer>
+        </Container>
+      </section>
 
-      {/* Toast */} 
-      <ToastContainer position="bottom-end" className="p-3"> 
-        <Toast show={toast.show} bg="light" onClose={() => setToast({show:false,message:''})}> 
-          <Toast.Header><strong className="me-auto text-success">Notice</strong></Toast.Header> 
-          <Toast.Body>{toast.message}</Toast.Body> 
-        </Toast> 
-      </ToastContainer> 
+      {/* Toast */}
+      <ToastContainer position="bottom-end" className="p-3">
+        <Toast show={toast.show} bg="light" onClose={() => setToast({show:false,message:''})}>
+          <Toast.Header><strong className="me-auto text-success">Notice</strong></Toast.Header>
+          <Toast.Body>{toast.message}</Toast.Body>
+        </Toast>
+      </ToastContainer>
 
-      {/* Footer */} 
-      <footer className="bg-white py-4 text-center brand-footer"> 
-        <small className="text-muted">© {new Date().getFullYear()} CarbonRoute – Mål. Reducér. Rapportér.</small> 
-      </footer> 
-    </> 
-  ); 
+      {/* Footer */}
+      <footer className="bg-white py-4 text-center brand-footer">
+        <small className="text-muted">© {new Date().getFullYear()} CarbonRoute – Mål. Reducér. Rapportér.</small>
+      </footer>
+    </>
+  );
 }
