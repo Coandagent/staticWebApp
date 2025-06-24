@@ -122,15 +122,9 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   // UI state
-  const [rows, setRows] = useState([
-  {
-    stops: [
-      { location: '', mode:'road', weight:'', eu:true, state:'', error:'' },
-      { location: '', mode:'road', weight:'', eu:true, state:'', error:'' }
-    ],
-    error: ''
-  }
-]);
+// UI state
+const [rows, setRows] = useState([{ stops: [{ location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }, { location: '', mode: 'road', weight: '', eu: true, state: '', error: '' }], error: '' }]);
+
   const [results, setResults] = useState([]);
   const [format, setFormat] = useState('pdf');
   const [loading, setLoading] = useState(false);
@@ -225,16 +219,16 @@ const handleViewHistory = async () => {
 const handleCalculateAndSave = async () => {
   if (!validate()) return;
 
-  // flatten each journey's stops into individual legs
-  const payload = rows.flatMap(r => {
+  // Flatten each journey's stops into individual legs
+  const payload = rows.flatMap(row => {
     const legs = [];
-    for (let i = 0; i < r.stops.length - 1; i++) {
-      const from = r.stops[i];
-      const to   = r.stops[i + 1];
+    for (let i = 0; i < row.stops.length - 1; i++) {
+      const from = row.stops[i];
+      const to   = row.stops[i + 1];
       legs.push({
         from_location: from.location,
         to_location:   to.location,
-        mode:          to.mode,                     // use the mode of the next leg
+        mode:          to.mode,                   // mode of that leg
         weight_kg:     Number(to.weight) || 0,
         eu:            Boolean(to.eu),
         state:         (to.state || '').trim().toLowerCase()
@@ -274,19 +268,19 @@ const handleCalculateAndSave = async () => {
 
 // Calculate only (for file upload path)
 const calculateOnly = async rawRows => {
-  // first transform uploaded rows (with .stops) into the same flattened legs payload
-  const payload = rawRows.flatMap(r => {
+  // Transform uploaded rows into flattened legs, same as the calculator
+  const payload = rawRows.flatMap(row => {
     const legs = [];
-    for (let i = 0; i < r.stops.length - 1; i++) {
-      const from = r.stops[i];
-      const to   = r.stops[i + 1];
+    for (let i = 0; i < row.stops.length - 1; i++) {
+      const from = row.stops[i];
+      const to   = row.stops[i + 1];
       legs.push({
         from_location: from.location,
         to_location:   to.location,
         mode:          to.mode,
         weight_kg:     Number(to.weight) || 0,
         eu:            Boolean(to.eu),
-        state:         (to.state || '').toLowerCase()
+        state:         (to.state || '').trim().toLowerCase()
       });
     }
     return legs;
@@ -308,6 +302,7 @@ const calculateOnly = async rawRows => {
     setFileLoading(false);
   }
 };
+
 
 
   // File upload handler
@@ -544,102 +539,192 @@ const downloadReport = () => {
               </Button>
             </div>
 
-            {/* Desktop input table */}
-            <div className="d-none d-md-block">
-              <Table bordered responsive className="align-middle brand-table">
-                <thead className="table-light">
-                  <tr>
-                    <th>From</th><th>To</th><th>Mode</th><th>Weight (kg)</th>
-                    <th>EU</th><th>State</th><th>Error</th><th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r,i) => (
-                    <tr key={i} className={r.error?'table-danger':''}>
-                      <td><Form.Control placeholder="City or Code" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)}/></td>
-                      <td><Form.Control placeholder="City or Code" value={r.to}   onChange={e=>handleChange(i,'to',e.target.value)}/></td>
-                      <td>
-                        <Form.Select value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}>
-                          <option value="road">Road</option>
-                          <option value="air">Air</option>
-                          <option value="sea">Sea</option>
-                        </Form.Select>
-                      </td>
-                      <td><Form.Control type="number" placeholder="0" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)}/></td>
-                      <td className="text-center"><Form.Check checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)}/></td>
-                      <td><Form.Control placeholder="State-code" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)}/></td>
-                      <td>{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/>{r.error}</Badge>}</td>
-                      <td className="text-center"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash/></Button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
+{/* Desktop: dynamically render each row’s stops and allow adding/removing stops */}
+<div className="d-none d-md-block">
+  {rows.map((row, ri) => (
+    <Table key={ri} bordered responsive className="align-middle brand-table mb-4">
+      <thead className="table-light">
+        <tr>
+          <th>#</th><th>Location</th><th>Mode</th><th>Weight (kg)</th><th>EU</th><th>State</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {row.stops.map((stop, si) => (
+          <tr key={si}>
+            <td>{si+1}</td>
+            <td>
+              <Form.Control
+                placeholder="City or Code"
+                value={stop.location}
+                onChange={e => handleStopChange(ri, si, 'location', e.target.value)}
+              />
+            </td>
+            <td>
+              <Form.Select
+                value={stop.mode}
+                onChange={e => handleStopChange(ri, si, 'mode', e.target.value)}
+              >
+                <option value="road">Road</option>
+                <option value="air">Air</option>
+                <option value="sea">Sea</option>
+              </Form.Select>
+            </td>
+            <td>
+              <Form.Control
+                type="number"
+                placeholder="0"
+                value={stop.weight}
+                onChange={e => handleStopChange(ri, si, 'weight', e.target.value)}
+              />
+            </td>
+            <td className="text-center">
+              <Form.Check
+                checked={stop.eu}
+                onChange={e => handleStopChange(ri, si, 'eu', e.target.checked)}
+              />
+            </td>
+            <td>
+              <Form.Control
+                placeholder="State"
+                value={stop.state}
+                onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
+              />
+            </td>
+            <td className="text-center">
+              {row.stops.length > 2 && (
+                <Button
+                  variant="outline-danger"
+                  size="sm"
+                  onClick={() => removeStop(ri, si)}
+                ><FaTrash/></Button>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colSpan={7} className="text-end">
+            <Button size="sm" onClick={() => addStop(ri)}>+ Add Stop</Button>
+          </td>
+        </tr>
+      </tfoot>
+    </Table>
+  ))}
+</div>
+
+{/* Mobile: same but stacked cards */}
+<div className="d-block d-md-none">
+  {rows.map((row, ri) => (
+    <Card key={ri} className="mb-3 brand-card-mobile">
+      <Card.Body>
+        <h6>Journey {ri+1}</h6>
+        {row.stops.map((stop, si) => (
+          <div key={si} className="mb-3 p-2 border rounded">
+            <strong>Stop {si+1}</strong>
+            <Form.Control
+              className="mb-2"
+              placeholder="Location"
+              value={stop.location}
+              onChange={e => handleStopChange(ri, si, 'location', e.target.value)}
+            />
+            <Form.Select
+              className="mb-2"
+              value={stop.mode}
+              onChange={e => handleStopChange(ri, si, 'mode', e.target.value)}
+            >
+              <option value="road">Road</option>
+              <option value="air">Air</option>
+              <option value="sea">Sea</option>
+            </Form.Select>
+            <Form.Control
+              className="mb-2"
+              type="number"
+              placeholder="Weight (kg)"
+              value={stop.weight}
+              onChange={e => handleStopChange(ri, si, 'weight', e.target.value)}
+            />
+            <div className="d-flex align-items-center mb-2">
+              <Form.Check
+                className="me-2"
+                checked={stop.eu}
+                onChange={e => handleStopChange(ri, si, 'eu', e.target.checked)}
+              />
+              <small>In EU</small>
             </div>
+            <Form.Control
+              className="mb-2"
+              placeholder="State"
+              value={stop.state}
+              onChange={e => handleStopChange(ri, si, 'state', e.target.value)}
+            />
+            {row.stops.length > 2 && (
+              <Button
+                variant="outline-danger"
+                size="sm"
+                onClick={() => removeStop(ri, si)}
+              >Remove Stop</Button>
+            )}
+          </div>
+        ))}
+        <Button size="sm" onClick={() => addStop(ri)}>+ Add Stop</Button>
+      </Card.Body>
+    </Card>
+  ))}
+</div>
 
-            {/* Mobile input cards */}
-            <div className="d-block d-md-none">
-              {rows.map((r,i) => (
-                <Card key={i} className="mb-3 brand-card-mobile">
-                  <Card.Body>
-                    <Form.Control className="mb-2" placeholder="From" value={r.from} onChange={e=>handleChange(i,'from',e.target.value)}/>
-                    <Form.Control className="mb-2" placeholder="To"   value={r.to}   onChange={e=>handleChange(i,'to',e.target.value)}/>
-                    <Form.Select className="mb-2" value={r.mode} onChange={e=>handleChange(i,'mode',e.target.value)}>
-                      <option value="road">Road</option>
-                      <option value="air">Air</option>
-                      <option value="sea">Sea</option>
-                    </Form.Select>
-                    <Form.Control className="mb-2" type="number" placeholder="Weight (kg)" value={r.weight} onChange={e=>handleChange(i,'weight',e.target.value)}/>
-                    <div className="d-flex align-items-center mb-2">
-                      <Form.Check className="me-2" checked={r.eu} onChange={e=>handleChange(i,'eu',e.target.checked)}/>
-                      <small>In EU</small>
-                    </div>
-                    <Form.Control className="mb-2" placeholder="State" value={r.state} onChange={e=>handleChange(i,'state',e.target.value)}/>
-                    {r.error && <Badge bg="danger" className="d-block mb-2">{r.error}</Badge>}
-                    <div className="text-end"><Button variant="outline-danger" size="sm" onClick={()=>removeRow(i)}><FaTrash/></Button></div>
-                  </Card.Body>
-                </Card>
-              ))}
-            </div>
+{/* Results Table */}
+{results.length > 0 && (
+  <Card className="shadow-sm mt-4">
+    <Card.Body>
+      <Card.Title className="text-success">Results</Card.Title>
+      <Table striped bordered hover responsive className="mt-3 brand-table">
+        <thead>
+          <tr>
+            <th>From (Used)</th>
+            <th>To (Used)</th>
+            <th>Mode</th>
+            <th>Distance (km)</th>
+            <th>Weight (kg)</th>
+            <th>EU</th>
+            <th>State</th>
+            <th>CO₂ (kg)</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          {results.map((r, i) => (
+            <tr key={i} className={r.error ? 'table-danger' : ''}>
+              <td>
+                {r.from_input}{' '}
+                <small className="text-muted">({r.from_used})</small>
+              </td>
+              <td>
+                {r.to_input}{' '}
+                <small className="text-muted">({r.to_used})</small>
+              </td>
+              <td className="text-capitalize">{r.mode}</td>
+              <td>{r.distance_km}</td>
+              <td>{r.weight_kg}</td>
+              <td>{r.eu ? 'Yes' : 'No'}</td>
+              <td>{r.state?.toUpperCase() ?? ''}</td>
+              <td>{r.co2_kg}</td>
+              <td>
+                {r.error && (
+                  <Badge bg="danger">
+                    <FaExclamationCircle className="me-1" />
+                    {r.error}
+                  </Badge>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </Card.Body>
+  </Card>
+)}
 
-            <Row className="mt-3">
-              <Col><Button variant="outline-success" onClick={addRow}><FaUpload className="me-1"/> Add Row</Button></Col>
-              <Col className="text-end">
-                <Button variant="success" onClick={handleCalculateAndSave} disabled={loading}>
-                  {loading ? <><Spinner size="sm" className="me-1"/>Calculating…</> : <><FaCalculator className="me-1"/>Calculate & Save</>}
-                </Button>
-              </Col>
-            </Row>
-          </Card.Body>
-        </Card>
-
-        {/* Results Table */}
-        {results.length > 0 && (
-          <Card className="shadow-sm mt-4">
-            <Card.Body>
-              <Card.Title className="text-success">Results</Card.Title>
-              <Table striped bordered hover responsive className="mt-3 brand-table">
-                <thead>
-                  <tr>
-                    <th>From (Used)</th><th>To (Used)</th><th>Mode</th><th>Distance (km)</th><th>CO₂ (kg)</th><th>Error</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((r,i) => (
-                    <tr key={i} className={r.error?'table-danger':''}>
-                      <td>{r.from_input} <small className="text-muted">({r.from_used})</small></td>
-                      <td>{r.to_input} <small className="text-muted">({r.to_used})</small></td>
-                      <td className="text-capitalize">{r.mode}</td>
-                      <td>{r.distance_km}</td>
-                      <td>{r.co2_kg}</td>
-                      <td>{r.error && <Badge bg="danger"><FaExclamationCircle className="me-1"/>{r.error}</Badge>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </Card.Body>
-          </Card>
-        )}
-      </Container>
 
 {/* History drill-down view */}
 {view === 'history' && (
