@@ -403,7 +403,7 @@ const calculateOnly = async (rawRows) => {
   };
 
 
-// Download / Print report - with Methodology & Emission Factors in Excel and PDF
+// Download / Print report - with hard-coded emission factors in Methodology
 const downloadReport = async () => {
   // 0) EULA guard
   if (!eulaAccepted) {
@@ -440,46 +440,58 @@ const downloadReport = async () => {
     dataHash
   };
 
+  // 4) Hard-coded emission factors (kg CO₂ per tonne-km)
+  const EMISSION_FACTORS = {
+    road: 0.12,  // 120 g CO₂ per tonne-km => 0.12 kg/t-km
+    air: 0.255,  // 255 g CO₂ per tonne-km => 0.255 kg/t-km
+    sea: 0.025   // 25 g CO₂ per tonne-km  => 0.025 kg/t-km
+  };
+
   if (['csv', 'xlsx'].includes(format)) {
     // ─── EXCEL ────────────────────────────────────────────────────────────
     const wb = XLSX.utils.book_new();
 
-    // Results
+    // 4a) Results sheet
     const wsData = [
       ['From','To','Mode','Distance (km)','Weight (kg)','EU','State','CO₂ (kg)'],
-      ...dataToExport.map(r => [
-        r.from_input ?? r.from_location,
-        r.to_input   ?? r.to_location,
-        r.mode,
-        r.distance_km,
-        r.weight_kg,
-        r.eu ? 'Yes' : 'No',
-        r.state?.toUpperCase() || '',
-        r.co2_kg
-      ])
+      ...dataToExport.map(r => {
+        const factor = EMISSION_FACTORS[r.mode] ?? 0;
+        const co2    = (r.distance_km * (r.weight_kg/1000) * factor).toFixed(3);
+        return [
+          r.from_input ?? r.from_location,
+          r.to_input   ?? r.to_location,
+          r.mode,
+          r.distance_km,
+          r.weight_kg,
+          r.eu ? 'Yes' : 'No',
+          r.state?.toUpperCase() || '',
+          co2
+        ];
+      })
     ];
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(wb, ws, 'Results');
 
-    // Metadata (hidden)
+    // 4b) Metadata (hidden)
     const metaEntries = Object.entries(meta).map(([k, v]) => [k, v]);
     const wsMeta = XLSX.utils.aoa_to_sheet([['Key','Value'], ...metaEntries]);
     wsMeta['!sheetHidden'] = true;
     XLSX.utils.book_append_sheet(wb, wsMeta, 'Metadata');
 
-    // Methodology
+    // 4c) Methodology sheet with factors
     const methodologyLines = [
       ['Methodology & Emission Factors'],
       [],
-      ['• EF Transport Road, CSRD v2.0, p.45'],
-      ['• EF Air & Sea, ESRS Guidelines 2024'],
-      ['• Factor DB version: transport-factors-v1.4.2'],
-      ['• Raw tables: https://example.com/factors']
+      ['• EF Transport Road: 0.12 kg CO₂/t-km (120 g CO₂/t-km)'],
+      ['• EF Transport Air: 0.255 kg CO₂/t-km (255 g CO₂/t-km)'],
+      ['• EF Transport Sea: 0.025 kg CO₂/t-km (25 g CO₂/t-km)'],
+      ['• Standard: GHG Protocol / ISO 14083:2024'],
+      ['• SHA-256 Data Hash included in metadata']
     ];
     const wsMeth = XLSX.utils.aoa_to_sheet(methodologyLines);
     XLSX.utils.book_append_sheet(wb, wsMeth, 'Methodology');
 
-    // Write & download
+    // 4d) Write & download
     const wbout = XLSX.write(wb, { bookType: format, type: 'array' });
     const blob = new Blob([wbout], { type: 'application/octet-stream' });
     const a = document.createElement('a');
@@ -501,18 +513,22 @@ const downloadReport = async () => {
     doc.text(`User: ${meta.user}`, 40, 110);
     doc.text(`Data SHA-256: ${meta.dataHash}`, 40, 125);
 
-    // Data table
+    // 5) Data table
     const head = [['From','To','Mode','Distance','Weight','EU','State','CO₂ (kg)']];
-    const body = dataToExport.map(r => [
-      r.from_input ?? r.from_location,
-      r.to_input   ?? r.to_location,
-      r.mode,
-      r.distance_km,
-      r.weight_kg,
-      r.eu ? 'Yes' : 'No',
-      r.state?.toUpperCase() || '',
-      r.co2_kg
-    ]);
+    const body = dataToExport.map(r => {
+      const factor = EMISSION_FACTORS[r.mode] ?? 0;
+      const co2    = (r.distance_km * (r.weight_kg/1000) * factor).toFixed(3);
+      return [
+        r.from_input ?? r.from_location,
+        r.to_input   ?? r.to_location,
+        r.mode,
+        r.distance_km,
+        r.weight_kg,
+        r.eu ? 'Yes' : 'No',
+        r.state?.toUpperCase() || '',
+        co2
+      ];
+    });
     autoTable(doc, {
       startY: 150,
       head,
@@ -520,21 +536,22 @@ const downloadReport = async () => {
       styles: { fontSize: 9, cellPadding: 4 }
     });
 
-    // Methodology appendix
+    // 6) Methodology appendix
     doc.addPage();
     doc.setFontSize(12);
     doc.text('Methodology & Emission Factors', 40, 60);
     doc.setFontSize(10);
     [
-      '• EF Transport Road, CSRD v2.0, p.45',
-      '• EF Air & Sea, ESRS Guidelines 2024',
-      '• Factor DB version: transport-factors-v1.4.2',
-      '• Raw tables: https://example.com/factors'
+      '• EF Transport Road: 0.12 kg CO₂/t-km (120 g CO₂/t-km)',
+      '• EF Transport Air: 0.255 kg CO₂/t-km (255 g CO₂/t-km)',
+      '• EF Transport Sea: 0.025 kg CO₂/t-km (25 g CO₂/t-km)',
+      '• Standard: GHG Protocol / ISO 14083:2024',
+      '• SHA-256 Data Hash included in metadata'
     ].forEach((line, i) =>
       doc.text(line, 40, 80 + i * 15)
     );
 
-    // Disclaimer footer
+    // 7) Disclaimer footer
     const disclaimer =
       'Denne rapport er udarbejdet i overensstemmelse med GHG Protocol & ISO 14083:2024. ' +
       'CarbonRoute påtager sig intet ansvar for forkerte input eller afvigelser i beregningsgrundlag.';
@@ -543,11 +560,11 @@ const downloadReport = async () => {
       maxWidth: doc.internal.pageSize.width - 80
     });
 
-    // Digital-sign stub
-    // TODO: send doc.output('arraybuffer') to your signing endpoint
+    // 8) Save
     doc.save('co2-report.pdf');
   }
 };
+
 
 
   // DELETE helper: stops propagation, confirms, calls DELETE, updates state
