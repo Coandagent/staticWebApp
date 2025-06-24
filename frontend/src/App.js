@@ -610,7 +610,7 @@ const downloadReport = () => {
       ← Back to Calculator
     </Button>
 
-    {/* 1) Year → Month */}
+    {/* 1) No month selected → list months */}
     {!selectedGroup ? (
       <>
         <h2 className="mt-4">Saved Calculations</h2>
@@ -631,31 +631,37 @@ const downloadReport = () => {
           </div>
         ))}
       </>
-    ) : !selectedGroup.day ? (
-      /* 2) Month → Day */
+    ) 
+
+    /* 2) Month selected but no day → list days */
+    : selectedGroup && !selectedGroup.day ? (
       <>
         <Button variant="link" onClick={() => setSelectedGroup(null)}>
-          ← Back to overview
+          ← Back to years
         </Button>
         <h3 className="mt-3">
           {selectedGroup.month} {selectedGroup.year}
         </h3>
-        {Object.entries(historyGroups[selectedGroup.year][selectedGroup.month]).map(
-          ([day, entries]) => (
-            <Badge
-              key={day}
-              bg="primary"
-              className="me-2 mb-1"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setSelectedGroup({ ...selectedGroup, day })}
-            >
-              {day} ({entries.length})
-            </Badge>
-          )
-        )}
+        {Object.entries(
+          historyGroups?.[selectedGroup.year]?.[selectedGroup.month] || {}
+        ).map(([day, entries]) => (
+          <Badge
+            key={day}
+            bg="primary"
+            className="me-2 mb-1"
+            style={{ cursor: 'pointer' }}
+            onClick={() =>
+              setSelectedGroup({ ...selectedGroup, day })
+            }
+          >
+            {day} ({entries.length})
+          </Badge>
+        ))}
       </>
-    ) : (
-      /* 3) Day → Full Table */
+    ) 
+
+    /* 3) Day selected → show table */
+    : (
       <>
         <Button
           variant="link"
@@ -668,7 +674,7 @@ const downloadReport = () => {
         <h3 className="mt-3">
           {selectedGroup.day} {selectedGroup.month} {selectedGroup.year}
         </h3>
-        <Table striped bordered hover responsive className="mt-2">
+        <Table striped bordered hover responsive className="mt-2 brand-table">
           <thead>
             <tr>
               <th>From (Used)</th>
@@ -678,37 +684,38 @@ const downloadReport = () => {
               <th>Weight (kg)</th>
               <th>EU</th>
               <th>State</th>
+              <th>CO₂ (kg)</th>
               <th>Error</th>
             </tr>
           </thead>
           <tbody>
-            {historyGroups[selectedGroup.year][selectedGroup.month][
-              selectedGroup.day
-            ].map((r, i) => (
-              <tr key={i} className={r.error ? 'table-danger' : ''}>
-                <td>
-                  {r.from_input}{' '}
-                  <small className="text-muted">({r.from_used})</small>
-                </td>
-                <td>
-                  {r.to_input}{' '}
-                  <small className="text-muted">({r.to_used})</small>
-                </td>
-                <td className="text-capitalize">{r.mode}</td>
-                <td>{r.distance_km}</td>
-                <td>{r.weight_kg}</td>
-                <td>{r.eu ? 'Yes' : 'No'}</td>
-                <td>{r.state.toUpperCase()}</td>
-                <td>
-                  {r.error && (
-                    <Badge bg="danger">
-                      <FaExclamationCircle className="me-1" />
-                      {r.error}
-                    </Badge>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {(historyGroups?.[selectedGroup.year]?.[selectedGroup.month]?.[selectedGroup.day] || [])
+              .map((r, i) => (
+                <tr key={i} className={r.error ? 'table-danger' : ''}>
+                  <td>
+                    {r.from_input}{' '}
+                    <small className="text-muted">({r.from_used})</small>
+                  </td>
+                  <td>
+                    {r.to_input}{' '}
+                    <small className="text-muted">({r.to_used})</small>
+                  </td>
+                  <td className="text-capitalize">{r.mode}</td>
+                  <td>{r.distance_km}</td>
+                  <td>{r.weight_kg}</td>
+                  <td>{r.eu ? 'Yes' : 'No'}</td>
+                  <td>{r.state?.toUpperCase() ?? ''}</td>
+                  <td>{r.co2_kg}</td>
+                  <td>
+                    {r.error && (
+                      <Badge bg="danger">
+                        <FaExclamationCircle className="me-1" />
+                        {r.error}
+                      </Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </Table>
       </>
