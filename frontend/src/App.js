@@ -122,7 +122,15 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   // UI state
-  const [rows, setRows] = useState([{ from:'', to:'', mode:'road', weight:'', eu:true, state:'', error:'' }]);
+  const [rows, setRows] = useState([
+  {
+    stops: [
+      { location: '', mode:'road', weight:'', eu:true, state:'', error:'' },
+      { location: '', mode:'road', weight:'', eu:true, state:'', error:'' }
+    ],
+    error: ''
+  }
+]);
   const [results, setResults] = useState([]);
   const [format, setFormat] = useState('pdf');
   const [loading, setLoading] = useState(false);
@@ -213,63 +221,94 @@ const handleViewHistory = async () => {
   }
 };
 
-  // Calculate & Save
-  const handleCalculateAndSave = async () => {
-    if (!validate()) return;
-    const payload = rows.map(r => ({
-      from_location: r.from,
-      to_location:   r.to,
-      mode:          r.mode,
-      weight_kg:     Number(r.weight) || 0,
-      eu:            r.eu,
-      state:         r.state.trim().toLowerCase()
-    }));
-    setLoading(true);
-    try {
-      // 1) Calculate
-      const calcRes = await fetch('/api/calculate-co2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!calcRes.ok) throw new Error(await calcRes.text());
-      const calcResults = await calcRes.json();
-      setResults(calcResults);
+// Calculate & Save
+const handleCalculateAndSave = async () => {
+  if (!validate()) return;
 
-      // 2) Save
-      await fetch('/api/SaveCo2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ results: calcResults })
+  // flatten each journey's stops into individual legs
+  const payload = rows.flatMap(r => {
+    const legs = [];
+    for (let i = 0; i < r.stops.length - 1; i++) {
+      const from = r.stops[i];
+      const to   = r.stops[i + 1];
+      legs.push({
+        from_location: from.location,
+        to_location:   to.location,
+        mode:          to.mode,                     // use the mode of the next leg
+        weight_kg:     Number(to.weight) || 0,
+        eu:            Boolean(to.eu),
+        state:         (to.state || '').trim().toLowerCase()
       });
-
-      showToast('Beregnet og gemt!');
-    } catch (e) {
-      showToast(e.message);
-    } finally {
-      setLoading(false);
-      setFileLoading(false);
     }
-  };
+    return legs;
+  });
 
-  // Calculate only (for file upload path)
-  const calculateOnly = async payload => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/calculate-co2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+  setLoading(true);
+  try {
+    // 1) Calculate
+    const calcRes = await fetch('/api/calculate-co2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!calcRes.ok) throw new Error(await calcRes.text());
+    const calcResults = await calcRes.json();
+    setResults(calcResults);
+
+    // 2) Save
+    await fetch('/api/SaveCo2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ results: calcResults })
+    });
+
+    showToast('Beregnet og gemt!');
+  } catch (e) {
+    showToast(e.message);
+  } finally {
+    setLoading(false);
+    setFileLoading(false);
+  }
+};
+
+
+// Calculate only (for file upload path)
+const calculateOnly = async rawRows => {
+  // first transform uploaded rows (with .stops) into the same flattened legs payload
+  const payload = rawRows.flatMap(r => {
+    const legs = [];
+    for (let i = 0; i < r.stops.length - 1; i++) {
+      const from = r.stops[i];
+      const to   = r.stops[i + 1];
+      legs.push({
+        from_location: from.location,
+        to_location:   to.location,
+        mode:          to.mode,
+        weight_kg:     Number(to.weight) || 0,
+        eu:            Boolean(to.eu),
+        state:         (to.state || '').toLowerCase()
       });
-      if (!res.ok) throw new Error(await res.text());
-      setResults(await res.json());
-    } catch (e) {
-      showToast(e.message);
-    } finally {
-      setLoading(false);
-      setFileLoading(false);
     }
-  };
+    return legs;
+  });
+
+  setLoading(true);
+  try {
+    const res = await fetch('/api/calculate-co2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(await res.text());
+    setResults(await res.json());
+  } catch (e) {
+    showToast(e.message);
+  } finally {
+    setLoading(false);
+    setFileLoading(false);
+  }
+};
+
 
   // File upload handler
   const handleFileUpload = e => {
