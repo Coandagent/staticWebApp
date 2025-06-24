@@ -610,7 +610,7 @@ const downloadReport = () => {
       ← Back to Calculator
     </Button>
 
-    {/* if no month selected → list months */}
+    {/* 1) Year → Month */}
     {!selectedGroup ? (
       <>
         <h2 className="mt-4">Saved Calculations</h2>
@@ -632,7 +632,7 @@ const downloadReport = () => {
         ))}
       </>
     ) : !selectedGroup.day ? (
-      /* month selected, list days */
+      /* 2) Month → Day */
       <>
         <Button variant="link" onClick={() => setSelectedGroup(null)}>
           ← Back to overview
@@ -647,9 +647,7 @@ const downloadReport = () => {
               bg="primary"
               className="me-2 mb-1"
               style={{ cursor: 'pointer' }}
-              onClick={() =>
-                setSelectedGroup({ ...selectedGroup, day })
-              }
+              onClick={() => setSelectedGroup({ ...selectedGroup, day })}
             >
               {day} ({entries.length})
             </Badge>
@@ -657,7 +655,7 @@ const downloadReport = () => {
         )}
       </>
     ) : (
-      /* day selected, show table */
+      /* 3) Day → Full Table */
       <>
         <Button
           variant="link"
@@ -673,19 +671,42 @@ const downloadReport = () => {
         <Table striped bordered hover responsive className="mt-2">
           <thead>
             <tr>
-              <th>From</th><th>To</th><th>Mode</th><th>Distance</th><th>CO₂</th>
+              <th>From (Used)</th>
+              <th>To (Used)</th>
+              <th>Mode</th>
+              <th>Distance (km)</th>
+              <th>Weight (kg)</th>
+              <th>EU</th>
+              <th>State</th>
+              <th>Error</th>
             </tr>
           </thead>
           <tbody>
             {historyGroups[selectedGroup.year][selectedGroup.month][
               selectedGroup.day
-            ].map((r,i) => (
-              <tr key={i}>
-                <td>{r.from_input}</td>
-                <td>{r.to_input}</td>
-                <td>{r.mode}</td>
+            ].map((r, i) => (
+              <tr key={i} className={r.error ? 'table-danger' : ''}>
+                <td>
+                  {r.from_input}{' '}
+                  <small className="text-muted">({r.from_used})</small>
+                </td>
+                <td>
+                  {r.to_input}{' '}
+                  <small className="text-muted">({r.to_used})</small>
+                </td>
+                <td className="text-capitalize">{r.mode}</td>
                 <td>{r.distance_km}</td>
-                <td>{r.co2_kg}</td>
+                <td>{r.weight_kg}</td>
+                <td>{r.eu ? 'Yes' : 'No'}</td>
+                <td>{r.state.toUpperCase()}</td>
+                <td>
+                  {r.error && (
+                    <Badge bg="danger">
+                      <FaExclamationCircle className="me-1" />
+                      {r.error}
+                    </Badge>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -694,6 +715,8 @@ const downloadReport = () => {
     )}
   </Container>
 )}
+
+
       {/* Feature Cards */}
       <Container className="my-5" id="features">
         <Row className="text-center mb-4">
