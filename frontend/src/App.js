@@ -597,10 +597,7 @@ Paris          | London      | air   | 50        | no  | GB
             <span className="h4 mb-0">CarbonRoute ESG CO₂ Dashboard</span>
           </Navbar.Brand>
           <Nav className="ms-auto d-flex align-items-center">
-            {/* Guide button */}
-            <Button variant="outline-light" size="sm" className="me-2" onClick={() => setShowGuide(true)}>
-              <FaQuestionCircle className="me-1"/> Guide
-            </Button>
+ 
             {user ? (
               <>
                 <span className="me-3">Hello, {user.userDetails}</span>
@@ -622,16 +619,54 @@ Paris          | London      | air   | 50        | no  | GB
       <header className="hero bg-primary text-white text-center py-5">
         <Container>
           <h1 className="display-4 fw-bold">Mål. Reducér. Rapportér.</h1>
-          <p className="lead mb-4">Nem CO₂-beregning for transport i overensstemmelse med EU's ESG-krav — vej, sø og luft.</p>
-          {user ? (
-            <Button variant="light" size="lg" className="me-2" onClick={handleViewHistory} disabled={loading}>
-              {loading ? <><Spinner size="sm" className="me-1"/>Henter…</> : 'Vis beregninger'}
-            </Button>
-          ) : (
-            <Button variant="light" size="lg" className="me-2" onClick={() => setShowLoginModal(true)}>
-              Prøv Gratis
-            </Button>
-          )}
+          <p className="lead mb-4">
+            Nem CO₂-beregning for transport i overensstemmelse med EU's ESG-krav — vej, sø og luft.
+          </p>
+          <div className="d-flex justify-content-center gap-2">
+            {user ? (
+              <>
+                <Button
+                  variant="light"
+                  size="lg"
+                  onClick={handleViewHistory}
+                  disabled={loading}
+                >
+                  {loading
+                    ? <>
+                        <Spinner size="sm" className="me-1" />
+                        Henter…
+                      </>
+                    : 'Vis beregninger'}
+                </Button>
+                <Button
+                  variant="outline-light"
+                  size="lg"
+                  onClick={() => setShowGuide(true)}
+                >
+                  <FaQuestionCircle className="me-1" />
+                  Guide
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="light"
+                  size="lg"
+                  onClick={() => setShowLoginModal(true)}
+                >
+                  Prøv Gratis
+                </Button>
+                <Button
+                  variant="outline-light"
+                  size="lg"
+                  onClick={() => setShowGuide(true)}
+                >
+                  <FaQuestionCircle className="me-1" />
+                  Guide
+                </Button>
+              </>
+            )}
+          </div>
         </Container>
       </header>
 
