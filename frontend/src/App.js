@@ -196,9 +196,11 @@ const handleViewHistory = async () => {
       const d  = new Date(ts);
       const yr = d.getFullYear();
       const mo = d.toLocaleString('default', { month: 'long' });
-      groups[yr]         = groups[yr] || {};
-      groups[yr][mo]     = groups[yr][mo] || [];
-      groups[yr][mo].push(entry);
+      const day = d.getDate();
+      groups[yr]        = groups[yr]        || {};
+      groups[yr][mo]    = groups[yr][mo]    || {};
+      groups[yr][mo][day] = groups[yr][mo][day] || [];
+      groups[yr][mo][day].push(entry);
     }
 
     setHistoryGroups(groups);
@@ -608,47 +610,76 @@ const downloadReport = () => {
       ← Back to Calculator
     </Button>
 
+    {/* if no month selected → list months */}
     {!selectedGroup ? (
       <>
         <h2 className="mt-4">Saved Calculations</h2>
         {Object.entries(historyGroups).map(([year, months]) => (
-          <div key={year} className="mb-3">
+          <div key={year} className="mb-4">
             <h4>{year}</h4>
-            {Object.entries(months).map(([month, entries]) => (
+            {Object.entries(months).map(([month, days]) => (
               <Badge
                 key={month}
-                bg="primary"
+                bg="dark"
                 className="me-2 mb-1"
                 style={{ cursor: 'pointer' }}
                 onClick={() => setSelectedGroup({ year, month })}
               >
-                {month} ({entries.length})
+                {month}
               </Badge>
             ))}
           </div>
         ))}
       </>
-    ) : (
+    ) : !selectedGroup.day ? (
+      /* month selected, list days */
       <>
-
-   <Button variant="secondary" onClick={() => setSelectedGroup(null)}>
-      ← Back to overview
-    </Button>
+        <Button variant="link" onClick={() => setSelectedGroup(null)}>
+          ← Back to overview
+        </Button>
         <h3 className="mt-3">
           {selectedGroup.month} {selectedGroup.year}
+        </h3>
+        {Object.entries(historyGroups[selectedGroup.year][selectedGroup.month]).map(
+          ([day, entries]) => (
+            <Badge
+              key={day}
+              bg="primary"
+              className="me-2 mb-1"
+              style={{ cursor: 'pointer' }}
+              onClick={() =>
+                setSelectedGroup({ ...selectedGroup, day })
+              }
+            >
+              {day} ({entries.length})
+            </Badge>
+          )
+        )}
+      </>
+    ) : (
+      /* day selected, show table */
+      <>
+        <Button
+          variant="link"
+          onClick={() =>
+            setSelectedGroup({ year: selectedGroup.year, month: selectedGroup.month })
+          }
+        >
+          ← Back to {selectedGroup.month}
+        </Button>
+        <h3 className="mt-3">
+          {selectedGroup.day} {selectedGroup.month} {selectedGroup.year}
         </h3>
         <Table striped bordered hover responsive className="mt-2">
           <thead>
             <tr>
-              <th>From</th>
-              <th>To</th>
-              <th>Mode</th>
-              <th>Distance</th>
-              <th>CO₂</th>
+              <th>From</th><th>To</th><th>Mode</th><th>Distance</th><th>CO₂</th>
             </tr>
           </thead>
           <tbody>
-            {historyGroups[selectedGroup.year][selectedGroup.month].map((r, i) => (
+            {historyGroups[selectedGroup.year][selectedGroup.month][
+              selectedGroup.day
+            ].map((r,i) => (
               <tr key={i}>
                 <td>{r.from_input}</td>
                 <td>{r.to_input}</td>
@@ -663,9 +694,6 @@ const downloadReport = () => {
     )}
   </Container>
 )}
-
-
-
       {/* Feature Cards */}
       <Container className="my-5" id="features">
         <Row className="text-center mb-4">
