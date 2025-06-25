@@ -726,14 +726,18 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
 </Modal>
 
 {/* Navbar */}
-<Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
+<Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm" sticky="top">
   <Container fluid>
     {/* Brand */}
     <Navbar.Brand className="d-flex align-items-center" href="/">
-      {/* removed height prop, added logo-img class */}
       <img src={logo} alt="CarbonRoute" className="me-3 logo-img" />
-      <span className="h4 mb-0 navbar-title">
+
+      {/* full title on ≥sm, short title on xs */}
+      <span className="h4 mb-0 navbar-title d-none d-sm-inline">
         CarbonRoute ESG CO₂ Dashboard
+      </span>
+      <span className="h5 mb-0 navbar-title d-inline d-sm-none">
+        CarbonRoute ESG CO₂
       </span>
     </Navbar.Brand>
 
@@ -745,7 +749,9 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
       <Nav className="ms-auto d-flex align-items-center">
         {user ? (
           <>
-            <span className="me-3">Hej, {user.userDetails}</span>
+            <span className="me-3 text-light">
+              Hej, <strong>{user.userDetails}</strong>
+            </span>
             <Button
               variant="outline-light"
               size="sm"
