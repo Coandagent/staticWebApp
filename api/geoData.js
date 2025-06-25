@@ -96,11 +96,11 @@ function loadData() {
     const locode   = (r.UNLOCODE || '').trim().toUpperCase();
     const nameKey  = r.name.trim().toLowerCase();
     const rec      = {
-      lat,
-      lon,
-      inEU,
-      portType: (r.port_type || '').toLowerCase(),
-      usedName: r.name
+  lat,
+  lon,
+  inEU,
+  portType: 'commercial', 
+  usedName: r.name
     };
 
     // index by name and UN/LOCODE
