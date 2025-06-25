@@ -6,7 +6,6 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import {
   FaUserPlus,
@@ -182,17 +181,6 @@ export default function App() {
     allRows[rowIdx].segments[segIdx][field] = value;
     allRows[rowIdx].segments[segIdx].error = '';
     setRows(allRows);
-  };
-
-  const handleDragEnd = (result, rowIdx) => {
-    const { source, destination } = result;
-    if (!destination) return;
-    const updated = [...rows];
-    const segs = Array.from(updated[rowIdx].segments);
-    const [moved] = segs.splice(source.index, 1);
-    segs.splice(destination.index, 0, moved);
-    updated[rowIdx].segments = segs;
-    setRows(updated);
   };
 
   const addSegment = rowIdx => {
@@ -927,205 +915,163 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
 </div>
 
 
-     {/* Desktop Journeys with Drag-and-Drop */}
-<div className="d-none d-md-block">
-  {rows.map((row, ri) => (
-    <div key={ri} className="mb-4">
-      <div className="d-flex justify-content-end mb-2">
-        {rows.length > 1 && (
-          <Button variant="outline-danger" size="sm" onClick={() => removeRow(ri)}>
-            Fjern rejse
-          </Button>
-        )}
-      </div>
+            {/* Desktop Journeys */}
+            <div className="d-none d-md-block">
+              {rows.map((row, ri) => (
+                <div key={ri} className="mb-4">
+                  <div className="d-flex justify-content-end mb-2">
+                    {rows.length > 1 && (
+                      <Button variant="outline-danger" size="sm" onClick={() => removeRow(ri)}>
+                        Fjern rejse
+                      </Button>
+                    )}
+                  </div>
+                  <Table bordered responsive className="align-middle brand-table">
+                    <thead className="table-light">
+                      <tr>
+                        <th>#</th><th>From</th><th>To</th><th>Mode</th><th>Vægt (kg)</th><th>EU</th><th>State</th><th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {row.segments.map((seg, si) => (
+                        <tr key={si}>
+                          <td>{si+1}</td>
+                          <td>
+                            <Form.Control
+                              placeholder="From"
+                              value={seg.from}
+                              onChange={e => handleSegmentChange(ri, si, 'from', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <Form.Control
+                              placeholder="To"
+                              value={seg.to}
+                              onChange={e => handleSegmentChange(ri, si, 'to', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <Form.Select
+                              value={seg.mode}
+                              onChange={e => handleSegmentChange(ri, si, 'mode', e.target.value)}
+                            >
+                              <option value="road">Road</option>
+                              <option value="air">Air</option>
+                              <option value="sea">Sea</option>
+                            </Form.Select>
+                          </td>
+                          <td>
+                            <Form.Control
+                              type="number"
+                              placeholder="0"
+                              value={seg.weight}
+                              onChange={e => handleSegmentChange(ri, si, 'weight', e.target.value)}
+                            />
+                          </td>
+                          <td className="text-center">
+                            <Form.Check
+                              checked={seg.eu}
+                              onChange={e => handleSegmentChange(ri, si, 'eu', e.target.checked)}
+                            />
+                          </td>
+                          <td>
+                            <Form.Control
+                              placeholder="State"
+                              value={seg.state}
+                              onChange={e => handleSegmentChange(ri, si, 'state', e.target.value)}
+                            />
+                          </td>
+                          <td className="text-center">
+                            {row.segments.length > 1 && (
+                              <Button variant="outline-danger" size="sm" onClick={() => removeSegment(ri, si)}>
+                                <FaTrash/>
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={8} className="text-end">
+                          <Button size="sm" onClick={() => addSegment(ri)}>+ Tilføj segment</Button>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </Table>
+                </div>
+              ))}
+            </div>
 
-      <Table bordered responsive className="align-middle brand-table">
-        <thead className="table-light">
-          <tr>
-            <th>#</th><th>From</th><th>To</th><th>Mode</th><th>Vægt (kg)</th><th>EU</th><th>State</th><th></th>
-          </tr>
-        </thead>
-
-        <DragDropContext onDragEnd={res => handleDragEnd(res, ri)}>
-          <Droppable droppableId={`journey-${ri}`}>
-            {(provided) => (
-              <tbody ref={provided.innerRef} {...provided.droppableProps}>
-                {row.segments.map((seg, si) => (
-                  <Draggable key={si} draggableId={`segment-${ri}-${si}`} index={si}>
-                    {(prov, snap) => (
-                      <tr
-                        ref={prov.innerRef}
-                        {...prov.draggableProps}
-                        {...prov.dragHandleProps}
-                        className={snap.isDragging ? 'table-active' : ''}
-                      >
-                        <td>{si + 1}</td>
-                        <td>
-                          <Form.Control
-                            placeholder="From"
-                            value={seg.from}
-                            onChange={e => handleSegmentChange(ri, si, 'from', e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <Form.Control
-                            placeholder="To"
-                            value={seg.to}
-                            onChange={e => handleSegmentChange(ri, si, 'to', e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <Form.Select
-                            value={seg.mode}
-                            onChange={e => handleSegmentChange(ri, si, 'mode', e.target.value)}
-                          >
-                            <option value="road">Road</option>
-                            <option value="air">Air</option>
-                            <option value="sea">Sea</option>
-                          </Form.Select>
-                        </td>
-                        <td>
-                          <Form.Control
-                            type="number"
-                            placeholder="0"
-                            value={seg.weight}
-                            onChange={e => handleSegmentChange(ri, si, 'weight', e.target.value)}
-                          />
-                        </td>
-                        <td className="text-center">
+            {/* Mobile input cards */}
+            <div className="d-block d-md-none">
+              {rows.map((row, ri) => (
+                <Card key={ri} className="mb-3 brand-card-mobile">
+                  <Card.Body>
+                    <h6>Journey {ri + 1}
+                      {rows.length > 1 && (
+                        <Button variant="link" size="sm" className="text-danger float-end" onClick={() => removeRow(ri)}>
+                          Remove Journey
+                        </Button>
+                      )}
+                    </h6>
+                    {row.segments.map((seg, si) => (
+                      <div key={si} className="mb-3 p-2 border rounded">
+                        <strong>Segment {si + 1}</strong>
+                        <Form.Control
+                          className="mb-2"
+                          placeholder="From"
+                          value={seg.from}
+                          onChange={e => handleSegmentChange(ri, si, 'from', e.target.value)}
+                        />
+                        <Form.Control
+                          className="mb-2"
+                          placeholder="To"
+                          value={seg.to}
+                          onChange={e => handleSegmentChange(ri, si, 'to', e.target.value)}
+                        />
+                        <Form.Select
+                          className="mb-2"
+                          value={seg.mode}
+                          onChange={e => handleSegmentChange(ri, si, 'mode', e.target.value)}
+                        >
+                          <option value="road">Road</option>
+                          <option value="air">Air</option>
+                          <option value="sea">Sea</option>
+                        </Form.Select>
+                        <Form.Control
+                          className="mb-2"
+                          type="number"
+                          placeholder="Weight (kg)"
+                          value={seg.weight}
+                          onChange={e => handleSegmentChange(ri, si, 'weight', e.target.value)}
+                        />
+                        <div className="d-flex align-items-center mb-2">
                           <Form.Check
+                            className="me-2"
                             checked={seg.eu}
                             onChange={e => handleSegmentChange(ri, si, 'eu', e.target.checked)}
                           />
-                        </td>
-                        <td>
-                          <Form.Control
-                            placeholder="State"
-                            value={seg.state}
-                            onChange={e => handleSegmentChange(ri, si, 'state', e.target.value)}
-                          />
-                        </td>
-                        <td className="text-center">
-                          {row.segments.length > 1 && (
-                            <Button variant="outline-danger" size="sm" onClick={() => removeSegment(ri, si)}>
-                              <FaTrash/>
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </tbody>
-            )}
-          </Droppable>
-        </DragDropContext>
-
-        <tfoot>
-          <tr>
-            <td colSpan={8} className="text-end">
-              <Button size="sm" onClick={() => addSegment(ri)}>+ Tilføj segment</Button>
-            </td>
-          </tr>
-        </tfoot>
-      </Table>
-    </div>
-  ))}
-</div>
-
-           {/* Mobile Journeys with Drag-and-Drop */}
-<div className="d-block d-md-none">
-  {rows.map((row, ri) => (
-    <DragDropContext key={ri} onDragEnd={res => handleDragEnd(res, ri)}>
-      <Droppable droppableId={`mob-journey-${ri}`}>
-        {(provided) => (
-          <div ref={provided.innerRef} {...provided.droppableProps} className="mb-3">
-            <h6>
-              Journey {ri + 1}
-              {rows.length > 1 && (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="text-danger float-end"
-                  onClick={() => removeRow(ri)}
-                >
-                  Remove Journey
-                </Button>
-              )}
-            </h6>
-
-            {row.segments.map((seg, si) => (
-              <Draggable key={si} draggableId={`mob-seg-${ri}-${si}`} index={si}>
-                {(prov, snap) => (
-                  <Card
-                    ref={prov.innerRef}
-                    {...prov.draggableProps}
-                    {...prov.dragHandleProps}
-                    className={`mb-2 brand-card-mobile ${snap.isDragging ? 'border-primary' : ''}`}
-                  >
-                    <Card.Body>
-                      <strong>Segment {si + 1}</strong>
-                      <Form.Control
-                        className="mb-2"
-                        placeholder="From"
-                        value={seg.from}
-                        onChange={e => handleSegmentChange(ri, si, 'from', e.target.value)}
-                      />
-                      <Form.Control
-                        className="mb-2"
-                        placeholder="To"
-                        value={seg.to}
-                        onChange={e => handleSegmentChange(ri, si, 'to', e.target.value)}
-                      />
-                      <Form.Select
-                        className="mb-2"
-                        value={seg.mode}
-                        onChange={e => handleSegmentChange(ri, si, 'mode', e.target.value)}
-                      >
-                        <option value="road">Road</option>
-                        <option value="air">Air</option>
-                        <option value="sea">Sea</option>
-                      </Form.Select>
-                      <Form.Control
-                        className="mb-2"
-                        type="number"
-                        placeholder="Weight (kg)"
-                        value={seg.weight}
-                        onChange={e => handleSegmentChange(ri, si, 'weight', e.target.value)}
-                      />
-                      <div className="d-flex align-items-center mb-2">
-                        <Form.Check
-                          className="me-2"
-                          checked={seg.eu}
-                          onChange={e => handleSegmentChange(ri, si, 'eu', e.target.checked)}
+                          <small>In EU</small>
+                        </div>
+                        <Form.Control
+                          className="mb-2"
+                          placeholder="State"
+                          value={seg.state}
+                          onChange={e => handleSegmentChange(ri, si, 'state', e.target.value)}
                         />
-                        <small>In EU</small>
+                        {row.segments.length > 1 && (
+                          <Button variant="outline-danger" size="sm" onClick={() => removeSegment(ri, si)}>
+                            Remove Segment
+                          </Button>
+                        )}
                       </div>
-                      <Form.Control
-                        className="mb-2"
-                        placeholder="State"
-                        value={seg.state}
-                        onChange={e => handleSegmentChange(ri, si, 'state', e.target.value)}
-                      />
-                      {row.segments.length > 1 && (
-                        <Button variant="outline-danger" size="sm" onClick={() => removeSegment(ri, si)}>
-                          Remove Segment
-                        </Button>
-                      )}
-                    </Card.Body>
-                  </Card>
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
-            <Button size="sm" onClick={() => addSegment(ri)}>+ Add Segment</Button>
-          </div>
-        )}
-      </Droppable>
-    </DragDropContext>
-  ))}
-</div>
+                    ))}
+                    <Button size="sm" onClick={() => addSegment(ri)}>+ Add Segment</Button>
+                  </Card.Body>
+                </Card>
+              ))}
+            </div>
 
             {/* Calculate & Save */}
             <div className="text-end">

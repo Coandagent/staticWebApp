@@ -5,8 +5,8 @@
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "framer-motion": "^12.18.1",
-    "jspdf": "^2.5.1",
-    "jspdf-autotable": "^3.5.28",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "recharts": "^3.0.0"
   }
 }
