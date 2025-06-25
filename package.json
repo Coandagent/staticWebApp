@@ -3,6 +3,7 @@
     "@azure/static-web-apps-cli": "^2.0.6"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "framer-motion": "^12.18.1",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.5.28",
