@@ -703,6 +703,22 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
         </ol>
       </Col>
     </Row>
+<hr/>
+
+{/* 5) API-adgang */}
+<Row className="mb-4">
+  <Col xs={2} className="text-center">
+    <FaHandshake size={36} className="text-success" />
+  </Col>
+  <Col xs={10}>
+    <h5>5) API-adgang</h5>
+    <p>
+      API-adgang til automatisk CO₂-beregning er kun inkluderet i den betalte version.
+      Kontakt salgsafdelingen eller opgrader din konto via dashboardet for at få en API-nøgle.
+    </p>
+  </Col>
+</Row>
+
   </Modal.Body>
   <Modal.Footer>
     <Button variant="secondary" onClick={() => setShowGuide(false)}>Luk</Button>
