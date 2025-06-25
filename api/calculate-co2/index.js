@@ -68,9 +68,9 @@ module.exports = async function(context, req) {
 
       return {
         from_input:  r.from_location,
-        from_used: label(fromInfo),
+        from_used:   fromInfo.usedName,
         to_input:    r.to_location,
-        to_used:   label(toInfo),
+        to_used:     toInfo.usedName,
         mode:        r.mode,
         weight_kg:   weight,
         eu:          euFlag,
