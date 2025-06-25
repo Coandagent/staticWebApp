@@ -710,30 +710,41 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
 </Modal>
 
 
+// App.js (only showing the Navbar part)
+
       {/* Navbar */}
       <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
         <Container fluid>
           <Navbar.Brand className="d-flex align-items-center">
-            <img src={logo} alt="CarbonRoute" height="60" className="me-3"/>
-            <span className="h4 mb-0">CarbonRoute ESG CO₂ Dashboard</span>
+            {/* removed height prop, added logo-img class */}
+            <img src={logo} alt="CarbonRoute" className="me-3 logo-img" />
+            <span className="h4 mb-0 navbar-title">CarbonRoute ESG CO₂ Dashboard</span>
           </Navbar.Brand>
           <Nav className="ms-auto d-flex align-items-center">
- 
             {user ? (
               <>
                 <span className="me-3">Hej, {user.userDetails}</span>
-                <Button variant="outline-light" size="sm" onClick={() => window.location.href='/.auth/logout'}>
+                <Button
+                  variant="outline-light"
+                  size="sm"
+                  onClick={() => window.location.href = '/.auth/logout'}
+                >
                   Log ud
                 </Button>
               </>
             ) : (
-              <Button variant="outline-light" size="sm" onClick={() => setShowLoginModal(true)}>
+              <Button
+                variant="outline-light"
+                size="sm"
+                onClick={() => setShowLoginModal(true)}
+              >
                 Log ind
               </Button>
             )}
           </Nav>
         </Container>
       </Navbar>
+
 
 
       {/* Hero Section */}
@@ -1402,7 +1413,7 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
   <Modal.Body style={{ maxHeight: '60vh', overflowY: 'auto' }}>
     <h6>1. Indledning</h6>
     <p>
-      1.1. Disse vilkår (“Vilkår”) gælder for alle brugere (“Du”/“Bruger”) af CarbonRoute CO₂-beregner og tilhørende tjenester (“Tjenesten”), som stilles til rådighed af CarbonRoute A/S, CVR-nr. [indsæt] (“Vi”/“CarbonRoute”).  
+      1.1. Disse vilkår (“Vilkår”) gælder for alle brugere (“Du”/“Bruger”) af CarbonRoute CO₂-beregner og tilhørende tjenester (“Tjenesten”), som stilles til rådighed af CarbonRoute A/S, CVR-nr. 38231286 (“Vi”/“CarbonRoute”).  
       <br/>
       1.2. Ved at benytte Tjenesten accepterer Du disse Vilkår i deres helhed.
     </p>
