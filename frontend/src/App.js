@@ -728,35 +728,43 @@ Copenhagen     | Berlin      | road | 100       | yes| DE
 {/* Navbar */}
 <Navbar expand="lg" variant="dark" className="brand-navbar shadow-sm">
   <Container fluid>
-    <Navbar.Brand className="d-flex align-items-center">
+    {/* Brand */}
+    <Navbar.Brand className="d-flex align-items-center" href="/">
       {/* removed height prop, added logo-img class */}
       <img src={logo} alt="CarbonRoute" className="me-3 logo-img" />
       <span className="h4 mb-0 navbar-title">
         CarbonRoute ESG CO₂ Dashboard
       </span>
     </Navbar.Brand>
-    <Nav className="ms-auto d-flex align-items-center">
-      {user ? (
-        <>
-          <span className="me-3">Hej, {user.userDetails}</span>
+
+    {/* Hamburger toggle for mobile */}
+    <Navbar.Toggle aria-controls="main-navbar-nav" />
+
+    {/* Collapsible nav & auth buttons */}
+    <Navbar.Collapse id="main-navbar-nav">
+      <Nav className="ms-auto d-flex align-items-center">
+        {user ? (
+          <>
+            <span className="me-3">Hej, {user.userDetails}</span>
+            <Button
+              variant="outline-light"
+              size="sm"
+              onClick={() => window.location.href = '/.auth/logout'}
+            >
+              Log ud
+            </Button>
+          </>
+        ) : (
           <Button
             variant="outline-light"
             size="sm"
-            onClick={() => (window.location.href = '/.auth/logout')}
+            onClick={() => setShowLoginModal(true)}
           >
-            Log ud
+            Log ind
           </Button>
-        </>
-      ) : (
-        <Button
-          variant="outline-light"
-          size="sm"
-          onClick={() => setShowLoginModal(true)}
-        >
-          Log ind
-        </Button>
-      )}
-    </Nav>
+        )}
+      </Nav>
+    </Navbar.Collapse>
   </Container>
 </Navbar>
 
