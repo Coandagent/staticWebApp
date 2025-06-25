@@ -1,5 +1,3 @@
-// api/geoData.js
-
 const fs   = require('fs');
 const path = require('path');
 const { parse } = require('csv-parse/sync');
@@ -96,11 +94,11 @@ function loadData() {
     const locode   = (r.UNLOCODE || '').trim().toUpperCase();
     const nameKey  = r.name.trim().toLowerCase();
     const rec      = {
-  lat,
-  lon,
-  inEU,
-  portType: 'commercial', 
-  usedName: r.name
+      lat,
+      lon,
+      inEU,
+      portType: 'commercial',
+      usedName: r.name
     };
 
     // index by name and UN/LOCODE
@@ -157,7 +155,6 @@ function lookupLocation(nameOrCode, mode, options) {
       (!reqState || r.state === reqState)
     );
     if (!facilities.length) throw new Error(`No commercial airports for eu=${euFlag}`);
-    // find nearest to city reference
     const refRecs = cityMap[key] || [];
     if (!refRecs.length) throw new Error(`Cannot locate reference city: "${nameOrCode}"`);
     const ref = refRecs[0];
@@ -169,17 +166,24 @@ function lookupLocation(nameOrCode, mode, options) {
     return best;
   }
 
-  // SEA: code or nearest
+  // SEA: direct port or nearest fallback
   if (mode === 'sea') {
+    // 1) direct match
     if (seaportMap[key]) return seaportMap[key];
+
+    // 2) filter to allowed seaports
     const facilities = Object.values(seaportMap).filter(r =>
       r.inEU === euFlag &&
       ALLOWED_SEAPORT_TYPES.includes(r.portType)
     );
     if (!facilities.length) throw new Error(`No commercial seaports for eu=${euFlag}`);
+
+    // 3) get reference city coords
     const refRecs = cityMap[key] || [];
     if (!refRecs.length) throw new Error(`Cannot locate reference city: "${nameOrCode}"`);
     const ref = refRecs[0];
+
+    // 4) find nearest port to city
     let best, bestD = Infinity;
     facilities.forEach(f => {
       const d = haversine(ref, f);
